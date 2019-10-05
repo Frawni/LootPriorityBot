@@ -2,11 +2,13 @@
 # Last updated: 5th Oct 2019
 
 """
-TO DO
-
-Minimum commands
+BARE MINIMUM
 - !show --> prevent spam by checking time; better display
 - !boss
+
+POTENTIAL EXCEPTIONS (to be dealt with)
+- CommandNotFound (l 38)
+- MissingRole (ll 50, 85, 94)
 """
 
 
@@ -16,8 +18,10 @@ from datetime import datetime
 
 from config import AUTHORIZED_CHANNELS, ADMIN_ROLE
 from settings import token
+from info import AUTHOR, SOURCE, INVITE
 
 bot = Bot(command_prefix='!')
+bot.remove_command("help")
 
 PRIORITY_TABLE = {}      # "<name>": ["<class>", "<item with spaces>", "UTC datetime"]
 lock_flag = 0
@@ -40,6 +44,68 @@ async def on_message(message):
 @bot.command()
 async def hello(ctx):
     await ctx.send("Greetings!")
+
+
+@bot.command()
+async def info(ctx):
+    embed = discord.Embed(title="Loot Priority Bot", description="Waaaaay better than writing everything by hand, wouldn't you agree?")
+    embed.add_field(name="Authors", value=AUTHOR)
+    embed.add_field(name="Source", value=SOURCE)
+    embed.add_field(name="Invite", value=INVITE)
+    await ctx.send(embed=embed)
+
+
+@bot.command()
+async def help(ctx):
+    embed = discord.Embed(
+        title="Loot Priority Bot",
+        description="A list of basic commands:"
+    )
+    embed.add_field(
+        name="!request <name>/<class>/<item>",
+        value="Request priority on an item for the upcoming raid\nIf your name is already on the list, will replace the previous item",
+        inline=False
+    )
+    embed.add_field(
+        name="!show",
+        value="Shows the table of existing requests",
+        inline=False
+    )
+    embed.add_field(
+        name="!boss",
+        value="Shows the table for items relevant to that boss",
+        inline=False
+    )
+    embed.add_field(
+        name="!info",
+        value="Authors, source code link, invite link",
+        inline=False
+    )
+    embed.add_field(
+        name="!help",
+        value="Whaddya think?",
+        inline=False
+    )
+    await ctx.send(embed=embed)
+    embed = discord.Embed(
+        title="Extra commands for the privileged."
+    )
+    embed.add_field(
+        name="!newraid",
+        value="Resets the list of requests and unlocks the request command",
+        inline=False
+    )
+    embed.add_field(
+        name="!lock",
+        value="Locks requests - no new ones accepted",
+        inline=False
+    )
+    embed.add_field(
+        name="!unlock",
+        value="You done goofed and people need to change stuff? No problem!",
+        inline=False
+    )
+    await ctx.send(embed=embed)
 
 
 @bot.command()
