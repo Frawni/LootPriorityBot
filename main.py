@@ -36,7 +36,7 @@ async def on_ready():
 async def on_message(message):
     channel = message.channel
     if channel.name in AUTHORIZED_CHANNELS:
-        await bot.process_commands(message)
+        await bot.process_commands(message)      # maybe deal with CommandNotFound? but so far doesn't break, just 'logs'
     elif channel.type == discord.ChannelType.private:
         await channel.send("Whatever you say, darling.")
 
@@ -49,18 +49,25 @@ async def hello(ctx):
 @bot.command()
 async def newraid(ctx):
     # initialize priority table and unlock soft reserves
+    global PRIORITY_TABLE, lock_flag
     PRIORITY_TABLE = {}
     lock_flag = 0
-    await channel.send("Raid priority is now open!")
+    await ctx.send("Raid priority is now open!")
 
 
 @bot.command()
-async def request(ctx):
-    # parse message for <name>/<class>/<item>
+async def request(ctx, *args):
+    # parse message for <name> <class> <item> or <name>/<class>/<item>
+    # (one word for name and class right now)
     # and add/replace (if same name) to table
     if not lock_flag:
-        info = message.content.split("/")
-        PRIORITY_TABLE[info[0]] = info[1:] + [datetime.utcnow()]
+        if "/" in args[0]:
+            info = args[0].split("/") + list(args[1:])
+            info[2] = " ".join(info[2:])
+        else:
+            info = list(args)
+            info[2] = " ".join(info[2:])
+        PRIORITY_TABLE[info[0]] = info[1:3] + [datetime.utcnow()]
         reply = "You have your heart set on this item: [link]."
     else:
         reply = "Raid priority is locked. Sorry!"
@@ -70,6 +77,7 @@ async def request(ctx):
 @bot.command()
 async def lock(ctx):
     # raise flag for no more soft reserves
+    global lock_flag
     lock_flag = 1
     await ctx.send("Raid priority is now locked!")
 
@@ -77,35 +85,23 @@ async def lock(ctx):
 @bot.command()
 async def unlock(ctx):
     # lower flag for more soft reserves
+    global lock_flag
     lock_flag = 0
     await ctx.send("Raid priority is open once more!")
 
 
 @bot.command()
-async def newraid(ctx):
+async def show(ctx):
     # print table of reserves
     # prevent spam of table by limiting to once every minute or so?
-    await channel.send("| Name | Class | Item Requested | Time of Request |")
+    await ctx.send("| Name | Class | Item Requested | Time of Request |")
     for key in PRIORITY_TABLE.keys():
-        await channel.send("| {} | {} | {} | {} |".format(key, *PRIORITY_TABLE[key]))
+        await ctx.send("| {} | {} | {} | {} |".format(key, *PRIORITY_TABLE[key]))
 
-    elif message.content.startswith(BOSSLOOT_TRIGGER):
-        # print table for relevant reserved items in A-Z fashion
-        pass
 
-    elif message.content.startswith(HELP_TRIGGER):
-        # PM possible commands
-        user = message.author
-        dm_channel = user.dm_channel
-        if dm_channel is None:
-            await user.create_dm()
-            dm_channel = user.dm_channel
-        await channel.send("Sliding into your DMs :wink:")
-        await dm_channel.send(HELP_MESSAGE_PLEB)
-
-    else:
-        await channel.send("No idea what you're saying, mate.")
-        await channel.send("You having a stroke?")
+@bot.command()
+async def boss(ctx):
+    pass
 
 
 try:
