@@ -5,19 +5,20 @@
 TO DO
 
 Minimum commands
-- !show --> prevent spam by checking time
+- !show --> prevent spam by checking time; better display
 - !lock --> need to check for admin rights of some kind
 - !unlock --> same
 - !newraid --> same
+- !help --> same
 - !boss
-- !help
 """
 
 
 import discord
 from config import (
     NEWRAID_TRIGGER, HELLO_TRIGGER, SOFTRESERVE_TRIGGER, LOCK_TRIGGER,
-    UNLOCK_TRIGGER, SHOWTABLE_TRIGGER, BOSSLOOT_TRIGGER, HELP_TRIGGER
+    UNLOCK_TRIGGER, SHOWTABLE_TRIGGER, BOSSLOOT_TRIGGER, HELP_TRIGGER,
+    HELP_MESSAGE_PLEB, HELP_MESSGAGE_ADMIN
 )
 from settings import token, channel_name
 from datetime import datetime
@@ -44,10 +45,14 @@ async def on_message(message):
     if message.author == client.user:
         return
 
-    if message.channel.name == channel_name and message.content.startswith("!"):
+    channel = message.channel
+
+    if channel.type == discord.ChannelType.private:
+        await channel.send("Whatever you say, darling.")
+
+    elif channel.name == channel_name and message.content.startswith("!"):
         global lock_flag
         global PRIORITY_TABLE
-        channel = message.channel
 
         if message.content.startswith(HELLO_TRIGGER):
             await channel.send("Greetings!")
@@ -92,8 +97,13 @@ async def on_message(message):
 
         elif message.content.startswith(HELP_TRIGGER):
             # PM possible commands
+            user = message.author
+            dm_channel = user.dm_channel
+            if dm_channel is None:
+                await user.create_dm()
+                dm_channel = user.dm_channel
             await channel.send("Sliding into your DMs :wink:")
-            pass
+            await dm_channel.send(HELP_MESSAGE_PLEB)
 
         else:
             await channel.send("No idea what you're saying, mate.")
@@ -102,7 +112,7 @@ async def on_message(message):
 
 try:
     client.run(token)
-except RuntimeError:      # lol
+except RuntimeError:
     print("Exiting messily.")
 except Exception as e:
     print(e)
@@ -110,5 +120,5 @@ except Exception as e:
 
 """
 FEATURES
-
+oh the possibilities
 """
