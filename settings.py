@@ -1,4 +1,5 @@
 token = "rho sucks at using filters"
+channel_name = "general"
 
 
 try:
