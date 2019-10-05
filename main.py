@@ -57,17 +57,23 @@ async def newraid(ctx):
 
 @bot.command()
 async def request(ctx, *args):
-    # parse message for <name> <class> <item> or <name>/<class>/<item>
+    # parse message for <name>/<class>/<item>
     # (one word for name and class right now)
     # and add/replace (if same name) to table
     if not lock_flag:
-        if "/" in args[0]:
-            info = args[0].split("/") + list(args[1:])
-            info[2] = " ".join(info[2:])
-        else:
-            info = list(args)
-            info[2] = " ".join(info[2:])
-        PRIORITY_TABLE[info[0]] = info[1:3] + [datetime.utcnow()]
+        # cause it separate by space in message retrieval
+        request = " ".join(list(args))
+        info = request.split("/")
+
+        # WEIRD HACKY THING BEFORE EUREKA, KEEPING CAUSE I HOARD
+        # if "/" in args[0]:
+        #     info = args[0].split("/") + list(args[1:])
+        #     info[2] = " ".join(info[2:])
+        # else:
+        #     info = list(args)
+        #     info[2] = " ".join(info[2:])
+
+        PRIORITY_TABLE[info[0]] = info[1:] + [datetime.utcnow()]
         reply = "You have your heart set on this item: [link]."
     else:
         reply = "Raid priority is locked. Sorry!"
