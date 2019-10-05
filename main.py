@@ -19,6 +19,7 @@ POTENTIAL EXCEPTIONS (to be dealt with)
 import discord
 from discord.ext.commands import Bot, has_role
 from datetime import datetime
+from beautifultable import BeautifulTable
 
 from config import AUTHORIZED_CHANNELS, ADMIN_ROLE, PREFIX
 from settings import token
@@ -34,7 +35,6 @@ lock_flag = 0            # bool
 
 # Prevent spam --> PM if less than an hour in channel
 last_help = None   # last help command run in channel
-last_show = None   # last show commands run in channel
 
 
 @bot.event
@@ -81,7 +81,7 @@ async def help(ctx):
     )
     embed_pleb.add_field(
         name="!show",
-        value="Shows the table of existing requests",
+        value="Sends you the table of existing requests",
         inline=False
     )
     embed_pleb.add_field(
@@ -100,6 +100,11 @@ async def help(ctx):
     embed_admin.add_field(
         name="!newraid",
         value="Resets the list of requests and unlocks the request command",
+        inline=False
+    )
+    embed_admin.add_field(
+        name="!showall",
+        value="Shows the table of requested items in the channel",
         inline=False
     )
     embed_admin.add_field(
@@ -159,7 +164,7 @@ async def request(ctx, *args):
         # cause it dumb.
         request = " ".join(list(args))
         info = request.split("/")
-        PRIORITY_TABLE[info[0]] = info[1:] + [datetime.utcnow()]
+        PRIORITY_TABLE[info[0]] = info[1:] + [datetime.utcnow(), ]
         reply = "Noted!"
     else:
         reply = "Raid priority is locked. Sorry!"
@@ -186,23 +191,31 @@ async def unlock(ctx):
 
 @bot.command()
 async def show(ctx):
+    table = BeautifulTable()
+    table.column_headers = ["Name", "Class", "Item Requested", "Time of Request (UTC)"]
+    for key in PRIORITY_TABLE.keys():
+        time = PRIORITY_TABLE[key][2]
+        table.append_row([key, ] + PRIORITY_TABLE[key][:2] + ["{:02d}:{:02d}:{:02d}".format(time.hour, time.minute, time.second), ])
+    user = ctx.author
+    dm_channel = user.dm_channel
+    if dm_channel is None:
+        await user.create_dm()
+        dm_channel = user.dm_channel
+    await ctx.send("Sliding into your DMs :wink:")
+    await dm_channel.send("\n" + str(table))
+
+
+@bot.command()
+@has_role(ADMIN_ROLE)
+async def showall(ctx):
     # print table of requests
     # spam-filter of 1 minute if requests unlock
-    global last_show, lock_flag
-    if last_show is not None and not lock_flag:
-        delta = datetime.utcnow() - last_show
-        print(delta)
-        if delta.days == 0 and delta.seconds < 60:
-            await ctx.send("| Name | Class | Item Requested | Time of Request |")
-            for key in PRIORITY_TABLE.keys():
-                await ctx.send("| {} | {} | {} | {} |".format(key, *PRIORITY_TABLE[key]))
-        last_show = datetime.utcnow()
-    elif lock_flag:
-        await ctx.send("| Name | Class | Item Requested | Time of Request |")
-        for key in PRIORITY_TABLE.keys():
-            await ctx.send("| {} | {} | {} | {} |".format(key, *PRIORITY_TABLE[key]))
-    else:
-        ctx.send("I showed it less than a minute ago. Let's not spam, darling.")
+    table = BeautifulTable()
+    table.column_headers = ["Name", "Class", "Item Requested", "Time of Request (UTC)"]
+    for key in PRIORITY_TABLE.keys():
+        time = PRIORITY_TABLE[key][2]
+        table.append_row([key, ] + PRIORITY_TABLE[key][:2] + ["{:02d}:{:02d}:{:02d}".format(time.hour, time.minute, time.second), ])
+    await ctx.send("\n" + str(table))
 
 
 @bot.command()
