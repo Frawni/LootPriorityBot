@@ -15,103 +15,101 @@ Minimum commands
 
 
 import discord
-from config import (
-    NEWRAID_TRIGGER, HELLO_TRIGGER, SOFTRESERVE_TRIGGER, LOCK_TRIGGER,
-    UNLOCK_TRIGGER, SHOWTABLE_TRIGGER, BOSSLOOT_TRIGGER, HELP_TRIGGER,
-    HELP_MESSAGE_PLEB
-)
-from settings import token, channel_name
+from discord.ext.commands import Bot
 from datetime import datetime
 
+from config import AUTHORIZED_CHANNELS
+from settings import token
 
-client = discord.Client()
+bot = Bot(command_prefix='!')
 
 PRIORITY_TABLE = {}      # "<name>": ["<class>", "<item with spaces>", "UTC datetime"]
 lock_flag = 0
 
-# def show_table(channel, item=None):
-#     if item is None:
-#         for key in PRIORITY_TABLE.keys():
-#             channel.send("| {} | {} | {} | {} |".format(key, *PRIORITY_TABLE[key]))
 
-
-@client.event
+@bot.event
 async def on_ready():
-    print("We have logged in as {0.user}".format(client))
+    print("We have logged in as {}".format(bot.user.name))
 
 
-@client.event
+@bot.event
 async def on_message(message):
-    if message.author == client.user:
-        return
-
     channel = message.channel
-
-    if channel.type == discord.ChannelType.private:
+    if channel.name in AUTHORIZED_CHANNELS:
+        await bot.process_commands(message)
+    elif channel.type == discord.ChannelType.private:
         await channel.send("Whatever you say, darling.")
 
-    elif channel.name == channel_name and message.content.startswith("!"):
-        global lock_flag
-        global PRIORITY_TABLE
 
-        if message.content.startswith(HELLO_TRIGGER):
-            await channel.send("Greetings!")
+@bot.command()
+async def hello(ctx):
+    await ctx.send("Greetings!")
 
-        elif message.content.startswith(NEWRAID_TRIGGER):
-            # initialize priority table and unlock soft reserves
-            PRIORITY_TABLE = {}
-            lock_flag = 0
-            await channel.send("Raid priority is now open!")
 
-        elif message.content.startswith(SOFTRESERVE_TRIGGER):
-            # parse message for <name>/<class>/<item>
-            # and add/replace (if same name) to table
-            if not lock_flag:
-                info = message.content.replace(SOFTRESERVE_TRIGGER + " ", "").split("/")
-                PRIORITY_TABLE[info[0]] = info[1:] + [datetime.utcnow()]
-                reply = "You have your heart set on this item: [link]."
-            else:
-                reply = "Raid priority is locked. Sorry!"
-            await channel.send(reply)
+@bot.command()
+async def newraid(ctx):
+    # initialize priority table and unlock soft reserves
+    PRIORITY_TABLE = {}
+    lock_flag = 0
+    await channel.send("Raid priority is now open!")
 
-        elif message.content.startswith(LOCK_TRIGGER):
-            # raise flag for no more soft reserves
-            lock_flag = 1
-            await channel.send("Raid priority is now locked!")
 
-        elif message.content.startswith(UNLOCK_TRIGGER):
-            # lower flag for more soft reserves
-            lock_flag = 0
-            await channel.send("Raid priority is open once more!")
+@bot.command()
+async def request(ctx):
+    # parse message for <name>/<class>/<item>
+    # and add/replace (if same name) to table
+    if not lock_flag:
+        info = message.content.split("/")
+        PRIORITY_TABLE[info[0]] = info[1:] + [datetime.utcnow()]
+        reply = "You have your heart set on this item: [link]."
+    else:
+        reply = "Raid priority is locked. Sorry!"
+    await ctx.send(reply)
 
-        elif message.content.startswith(SHOWTABLE_TRIGGER):
-            # print table of reserves
-            # prevent spam of table by limiting to once every minute or so?
-            await channel.send("| Name | Class | Item Requested | Time of Request |")
-            for key in PRIORITY_TABLE.keys():
-                await channel.send("| {} | {} | {} | {} |".format(key, *PRIORITY_TABLE[key]))
 
-        elif message.content.startswith(BOSSLOOT_TRIGGER):
-            # print table for relevant reserved items in A-Z fashion
-            pass
+@bot.command()
+async def lock(ctx):
+    # raise flag for no more soft reserves
+    lock_flag = 1
+    await ctx.send("Raid priority is now locked!")
 
-        elif message.content.startswith(HELP_TRIGGER):
-            # PM possible commands
-            user = message.author
+
+@bot.command()
+async def unlock(ctx):
+    # lower flag for more soft reserves
+    lock_flag = 0
+    await ctx.send("Raid priority is open once more!")
+
+
+@bot.command()
+async def newraid(ctx):
+    # print table of reserves
+    # prevent spam of table by limiting to once every minute or so?
+    await channel.send("| Name | Class | Item Requested | Time of Request |")
+    for key in PRIORITY_TABLE.keys():
+        await channel.send("| {} | {} | {} | {} |".format(key, *PRIORITY_TABLE[key]))
+
+    elif message.content.startswith(BOSSLOOT_TRIGGER):
+        # print table for relevant reserved items in A-Z fashion
+        pass
+
+    elif message.content.startswith(HELP_TRIGGER):
+        # PM possible commands
+        user = message.author
+        dm_channel = user.dm_channel
+        if dm_channel is None:
+            await user.create_dm()
             dm_channel = user.dm_channel
-            if dm_channel is None:
-                await user.create_dm()
-                dm_channel = user.dm_channel
-            await channel.send("Sliding into your DMs :wink:")
-            await dm_channel.send(HELP_MESSAGE_PLEB)
+        await channel.send("Sliding into your DMs :wink:")
+        await dm_channel.send(HELP_MESSAGE_PLEB)
 
-        else:
-            await channel.send("No idea what you're saying, mate.")
-            await channel.send("You having a stroke?")
+    else:
+        await channel.send("No idea what you're saying, mate.")
+        await channel.send("You having a stroke?")
 
 
 try:
-    client.run(token)
+    bot.run(token)
 except RuntimeError:
     print("Exiting messily.")
 except Exception as e:
