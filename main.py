@@ -6,19 +6,15 @@ TO DO
 
 Minimum commands
 - !show --> prevent spam by checking time; better display
-- !lock --> need to check for admin rights of some kind
-- !unlock --> same
-- !newraid --> same
-- !help --> same
 - !boss
 """
 
 
 import discord
-from discord.ext.commands import Bot
+from discord.ext.commands import Bot, has_role
 from datetime import datetime
 
-from config import AUTHORIZED_CHANNELS
+from config import AUTHORIZED_CHANNELS, ADMIN_ROLE
 from settings import token
 
 bot = Bot(command_prefix='!')
@@ -47,6 +43,7 @@ async def hello(ctx):
 
 
 @bot.command()
+@has_role(ADMIN_ROLE)
 async def newraid(ctx):
     # initialize priority table and unlock soft reserves
     global PRIORITY_TABLE, lock_flag
@@ -81,6 +78,7 @@ async def request(ctx, *args):
 
 
 @bot.command()
+@has_role(ADMIN_ROLE)
 async def lock(ctx):
     # raise flag for no more soft reserves
     global lock_flag
@@ -89,6 +87,7 @@ async def lock(ctx):
 
 
 @bot.command()
+@has_role(ADMIN_ROLE)
 async def unlock(ctx):
     # lower flag for more soft reserves
     global lock_flag
