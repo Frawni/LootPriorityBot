@@ -1,0 +1,2 @@
+beautifultable==0.8.0
+discord.py==1.2.3
