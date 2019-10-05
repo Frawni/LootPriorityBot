@@ -67,6 +67,7 @@ async def info(ctx):
 
 @bot.command()
 async def help(ctx):
+    # spam filter of 1 hour
     global last_help
     print(last_help)
     embed_pleb = discord.Embed(
@@ -185,11 +186,23 @@ async def unlock(ctx):
 
 @bot.command()
 async def show(ctx):
-    # print table of reserves
-    # prevent spam of table by limiting to once every minute or so?
-    await ctx.send("| Name | Class | Item Requested | Time of Request |")
-    for key in PRIORITY_TABLE.keys():
-        await ctx.send("| {} | {} | {} | {} |".format(key, *PRIORITY_TABLE[key]))
+    # print table of requests
+    # spam-filter of 1 minute if requests unlock
+    global last_show, lock_flag
+    if last_show is not None and not lock_flag:
+        delta = datetime.utcnow() - last_show
+        print(delta)
+        if delta.days == 0 and delta.seconds < 60:
+            await ctx.send("| Name | Class | Item Requested | Time of Request |")
+            for key in PRIORITY_TABLE.keys():
+                await ctx.send("| {} | {} | {} | {} |".format(key, *PRIORITY_TABLE[key]))
+        last_show = datetime.utcnow()
+    elif lock_flag:
+        await ctx.send("| Name | Class | Item Requested | Time of Request |")
+        for key in PRIORITY_TABLE.keys():
+            await ctx.send("| {} | {} | {} | {} |".format(key, *PRIORITY_TABLE[key]))
+    else:
+        ctx.send("I showed it less than a minute ago. Let's not spam, darling.")
 
 
 @bot.command()
