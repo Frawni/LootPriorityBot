@@ -1,7 +1,9 @@
 HELLO_TRIGGER = "!hello"
 
+NEWRAID_TRIGGER = "!newraid"
 SOFTRESERVE_TRIGGER = "!soft"
 LOCK_TRIGGER = "!lock"
+UNLOCK_TRIGGER = "!unlock"
 SHOWTABLE_TRIGGER = "!show"
 BOSSLOOT_TRIGGER = "!boss"
 
