@@ -20,13 +20,13 @@ import discord
 from discord.ext.commands import Bot, has_role
 from datetime import datetime
 
-from config import AUTHORIZED_CHANNELS, ADMIN_ROLE
+from config import AUTHORIZED_CHANNELS, ADMIN_ROLE, PREFIX
 from settings import token
 from info import AUTHOR, SOURCE, INVITE
 
 
 # GLOBAL VARIABLES
-bot = Bot(command_prefix='!')
+bot = Bot(command_prefix=PREFIX)
 bot.remove_command("help")
 
 PRIORITY_TABLE = {}      # "<name>": ["<class>", "<item with spaces>", "UTC datetime"]
