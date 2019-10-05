@@ -46,6 +46,7 @@ async def on_message(message):
 
     if message.channel.name == channel_name and message.content.startswith("!"):
         global lock_flag
+        global PRIORITY_TABLE
         channel = message.channel
 
         if message.content.startswith(HELLO_TRIGGER):
