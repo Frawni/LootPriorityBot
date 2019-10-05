@@ -4,15 +4,15 @@
 """
 BARE MINIMUM
 - !help --> rewrite for the love of all that is holy
-- !show --> prevent spam by checking time; better display
+- !show --> same
 - !boss
 
 PRETTY
-- divide into manageable files for accessibility
+- divide into manageable files for accessibility and sanity
 
 POTENTIAL EXCEPTIONS (to be dealt with)
-- CommandNotFound (l 50)
-- MissingRole (ll 50, 85, 94)
+- CommandNotFound (l 51)
+- MissingRole (ll 148, 175, 184, 209, 222)
 """
 
 
