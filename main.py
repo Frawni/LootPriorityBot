@@ -18,7 +18,7 @@ import discord
 from config import (
     NEWRAID_TRIGGER, HELLO_TRIGGER, SOFTRESERVE_TRIGGER, LOCK_TRIGGER,
     UNLOCK_TRIGGER, SHOWTABLE_TRIGGER, BOSSLOOT_TRIGGER, HELP_TRIGGER,
-    HELP_MESSAGE_PLEB, HELP_MESSGAGE_ADMIN
+    HELP_MESSAGE_PLEB
 )
 from settings import token, channel_name
 from datetime import datetime
@@ -61,7 +61,7 @@ async def on_message(message):
             # initialize priority table and unlock soft reserves
             PRIORITY_TABLE = {}
             lock_flag = 0
-            await channel.send("@Raider Raid priority is now open!")
+            await channel.send("Raid priority is now open!")
 
         elif message.content.startswith(SOFTRESERVE_TRIGGER):
             # parse message for <name>/<class>/<item>
@@ -69,7 +69,7 @@ async def on_message(message):
             if not lock_flag:
                 info = message.content.replace(SOFTRESERVE_TRIGGER + " ", "").split("/")
                 PRIORITY_TABLE[info[0]] = info[1:] + [datetime.utcnow()]
-                reply = "@Frawni You have your heart set on this item: [link]."
+                reply = "You have your heart set on this item: [link]."
             else:
                 reply = "Raid priority is locked. Sorry!"
             await channel.send(reply)
@@ -77,12 +77,12 @@ async def on_message(message):
         elif message.content.startswith(LOCK_TRIGGER):
             # raise flag for no more soft reserves
             lock_flag = 1
-            await channel.send("@Raider Raid priority is now locked!")
+            await channel.send("Raid priority is now locked!")
 
         elif message.content.startswith(UNLOCK_TRIGGER):
             # lower flag for more soft reserves
             lock_flag = 0
-            await channel.send("@Raider Raid priority is open once more!")
+            await channel.send("Raid priority is open once more!")
 
         elif message.content.startswith(SHOWTABLE_TRIGGER):
             # print table of reserves

@@ -1,3 +1,6 @@
+ADMIN_ROLE = "tourist"
+
+
 HELLO_TRIGGER = "!hello"
 
 NEWRAID_TRIGGER = "!newraid"
@@ -18,7 +21,7 @@ Here is a list of commands you have access to:\n
 **{}** : show the items already requested for this boss
 """.format(HELP_TRIGGER, SOFTRESERVE_TRIGGER, SHOWTABLE_TRIGGER, BOSSLOOT_TRIGGER)
 
-HELP_MESSGAGE_ADMIN = """
+HELP_MESSAGE_ADMIN = """
 Just 'cause you're special, here are extra commands,
 just for you (and a couple of others)! :kissing_heart:\n
 **{}** : resets the request table and everything
