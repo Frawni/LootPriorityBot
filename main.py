@@ -30,7 +30,7 @@ from info import AUTHOR, SOURCE, INVITE
 bot = Bot(command_prefix=PREFIX)
 bot.remove_command("help")
 
-PRIORITY_TABLE = {}      # "<name>": ["<class>", "<item with spaces>", "UTC datetime"]
+PRIORITY_TABLE = {}      # "<name>": ["<class>", "<item>", "UTC datetime"]
 lock_flag = 0            # bool
 
 # Prevent spam --> PM if less than an hour in channel
@@ -39,7 +39,7 @@ last_help = None   # last help command run in channel
 
 @bot.event
 async def on_ready():
-    print("We have logged in as {}".format(bot.user.name))
+    print("Successfully logged in as {}".format(bot.user.name))
 
 
 @bot.event
@@ -163,9 +163,12 @@ async def request(ctx, *args):
         # cause it separate by space in message retrieval
         # cause it dumb.
         request = " ".join(list(args))
-        info = request.split("/")
-        PRIORITY_TABLE[info[0]] = info[1:] + [datetime.utcnow(), ]
-        reply = "Noted!"
+        if request.count("/") == 2:
+            info = request.split("/")
+            PRIORITY_TABLE[info[0]] = info[1:] + [datetime.utcnow(), ]
+            reply = "Noted!"
+        else:
+            reply = "Um, maybe use !help first, love. It looks like you made too many or too little requests.:thinking:"
     else:
         reply = "Raid priority is locked. Sorry!"
     await ctx.send(reply)
@@ -191,31 +194,39 @@ async def unlock(ctx):
 
 @bot.command()
 async def show(ctx):
-    table = BeautifulTable()
-    table.column_headers = ["Name", "Class", "Item Requested", "Time of Request (UTC)"]
-    for key in PRIORITY_TABLE.keys():
-        time = PRIORITY_TABLE[key][2]
-        table.append_row([key, ] + PRIORITY_TABLE[key][:2] + ["{:02d}:{:02d}:{:02d}".format(time.hour, time.minute, time.second), ])
-    user = ctx.author
-    dm_channel = user.dm_channel
-    if dm_channel is None:
-        await user.create_dm()
+    # print table of requests in private message
+    if PRIORITY_TABLE != {}:
+        table = BeautifulTable()
+        table.column_headers = ["Name", "Class", "Item Requested", "Time of Request (UTC)"]
+        for key in PRIORITY_TABLE.keys():
+            time = PRIORITY_TABLE[key][2]
+            table.append_row([key, ] + PRIORITY_TABLE[key][:2] + ["{:02d}:{:02d}:{:02d}".format(time.hour, time.minute, time.second), ])
+        table.sort("Item Requested")
+        user = ctx.author
         dm_channel = user.dm_channel
-    await ctx.send("Sliding into your DMs :wink:")
-    await dm_channel.send("\n" + str(table))
+        if dm_channel is None:
+            await user.create_dm()
+            dm_channel = user.dm_channel
+        await ctx.send("Sliding into your DMs :wink:")
+        await dm_channel.send("```" + str(table) + "```")
+    else:
+        await ctx.send("Nothing to show yet!")
 
 
 @bot.command()
 @has_role(ADMIN_ROLE)
 async def showall(ctx):
-    # print table of requests
-    # spam-filter of 1 minute if requests unlock
-    table = BeautifulTable()
-    table.column_headers = ["Name", "Class", "Item Requested", "Time of Request (UTC)"]
-    for key in PRIORITY_TABLE.keys():
-        time = PRIORITY_TABLE[key][2]
-        table.append_row([key, ] + PRIORITY_TABLE[key][:2] + ["{:02d}:{:02d}:{:02d}".format(time.hour, time.minute, time.second), ])
-    await ctx.send("\n" + str(table))
+    # print table of requests in channel
+    if PRIORITY_TABLE != {}:
+        table = BeautifulTable()
+        table.column_headers = ["Name", "Class", "Item Requested", "Time of Request (UTC)"]
+        for key in PRIORITY_TABLE.keys():
+            time = PRIORITY_TABLE[key][2]
+            table.append_row([key, ] + PRIORITY_TABLE[key][:2] + ["{:02d}:{:02d}:{:02d}".format(time.hour, time.minute, time.second), ])
+        table.sort("Item Requested")
+        await ctx.send("```" + str(table) + "```")
+    else:
+        await ctx.send("Nothing to show yet!")
 
 
 @bot.command()
