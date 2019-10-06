@@ -14,6 +14,8 @@ POTENTIAL EXCEPTIONS (to be dealt with)
 FEATURES
 - set admin role on bot invite (+ allow more than one role?)
 - !spreadsheet --> use google sheets api to have a shareable link
+- keep record of previous raids, and have appropriate commands for such
+- pretty stats based on previous raids?
 - !setraid --> for when more raids are accesible, and also if only certain bosses are killed
 - !count --> return number of people that have made a request
 - !roll --> cause deep down, I'm a troll
