@@ -1,14 +1,9 @@
 # Author: Caroline Forest
-# Last updated: 5th Oct 2019
+# Last updated: 6th Oct 2019
 
 """
 BARE MINIMUM
-- !help --> rewrite for the love of all that is holy
-- !show --> same
 - !boss
-
-PRETTY
-- divide into manageable files for accessibility and sanity
 
 POTENTIAL EXCEPTIONS (to be dealt with)
 - CommandNotFound (l 51)
@@ -19,11 +14,11 @@ POTENTIAL EXCEPTIONS (to be dealt with)
 import discord
 from discord.ext.commands import Bot, has_role
 from datetime import datetime
-from beautifultable import BeautifulTable
+
+from functions import build_table_str, write_info, write_help
 
 from config import AUTHORIZED_CHANNELS, ADMIN_ROLE, PREFIX
 from settings import token
-from info import AUTHOR, SOURCE, INVITE
 
 
 # GLOBAL VARIABLES
@@ -31,10 +26,10 @@ bot = Bot(command_prefix=PREFIX)
 bot.remove_command("help")
 
 PRIORITY_TABLE = {}      # "<name>": ["<class>", "<item>", "UTC datetime"]
-lock_flag = 0            # bool
+lock_flag = True         # bool (true when locked, false when unlocked)
 
 # Prevent spam --> PM if less than an hour in channel
-last_help = None   # last help command run in channel
+last_help = None   # last help message sent in channel
 
 
 @bot.event
@@ -48,7 +43,7 @@ async def on_message(message):
     if channel.type == discord.ChannelType.private:
         return
     elif channel.name in AUTHORIZED_CHANNELS:
-        await bot.process_commands(message)      # maybe deal with CommandNotFound? but so far doesn't break, just 'logs'
+        await bot.process_commands(message)      # maybe deal with CommandNotFound? but so far doesn't break, just prints in terminal
 
 
 @bot.command()
@@ -58,10 +53,7 @@ async def hello(ctx):
 
 @bot.command()
 async def info(ctx):
-    embed = discord.Embed(title="Loot Priority Bot", description="Waaaaay better than writing everything by hand, wouldn't you agree?")
-    embed.add_field(name="Authors", value=AUTHOR)
-    embed.add_field(name="Source", value=SOURCE)
-    embed.add_field(name="Invite", value=INVITE)
+    embed = write_info()
     await ctx.send(embed=embed)
 
 
@@ -69,79 +61,32 @@ async def info(ctx):
 async def help(ctx):
     # spam filter of 1 hour
     global last_help
-    print(last_help)
-    embed_pleb = discord.Embed(
-        title="Loot Priority Bot",
-        description="A list of basic commands:"
-    )
-    embed_pleb.add_field(
-        name="!request <name>/<class>/<item>",
-        value="Request priority on an item for the upcoming raid\nIf your name is already on the list, will replace the previous item",
-        inline=False
-    )
-    embed_pleb.add_field(
-        name="!show",
-        value="Sends you the table of existing requests",
-        inline=False
-    )
-    embed_pleb.add_field(
-        name="!info",
-        value="Authors, source code link, invite link",
-        inline=False
-    )
-    embed_pleb.add_field(
-        name="!help",
-        value="Whaddya think?",
-        inline=False
-    )
-    embed_admin = discord.Embed(
-        title="Extra commands for the privileged."
-    )
-    embed_admin.add_field(
-        name="!newraid",
-        value="Resets the list of requests and unlocks the request command",
-        inline=False
-    )
-    embed_admin.add_field(
-        name="!showall",
-        value="Shows the table of requested items in the channel",
-        inline=False
-    )
-    embed_admin.add_field(
-        name="!boss",
-        value="Shows the table for items relevant to that boss",
-        inline=False
-    )
-    embed_admin.add_field(
-        name="!lock",
-        value="Locks requests - no new ones accepted",
-        inline=False
-    )
-    embed_admin.add_field(
-        name="!unlock",
-        value="You done goofed and people need to change stuff? No problem!",
-        inline=False
-    )
+
+    # get pleb and admin help messages
+    embed_tuple = write_help()
+    channel = ctx
+    change = True
+
     if last_help is not None:
         delta = datetime.utcnow() - last_help
-        print(delta)
+
         if delta.days == 0 and delta.seconds < 3600:
+            # get user private message channel, or create if doesn't exist
             user = ctx.author
             dm_channel = user.dm_channel
             if dm_channel is None:
                 await user.create_dm()
                 dm_channel = user.dm_channel
-            await ctx.send("Sliding into your DMs :wink:")
-            await dm_channel.send(embed=embed_pleb)
-            await dm_channel.send(embed=embed_admin)
-        else:
-            await ctx.send(embed=embed_pleb)
-            await ctx.send(embed=embed_admin)
-            last_help = datetime.utcnow()
-    else:
-        await ctx.send(embed=embed_pleb)
-        await ctx.send(embed=embed_admin)
+
+            channel = dm_channel
+            change = False
+            await ctx.send("Sliding into your DMs, we don't want to spam, now. :wink:")
+
+    if change:
         last_help = datetime.utcnow()
+
+    await channel.send(embed=embed_tuple[0])
+    await channel.send(embed=embed_tuple[1])
 
 
 @bot.command()
@@ -150,7 +95,7 @@ async def newraid(ctx):
     # initialize priority table and unlock soft reserves
     global PRIORITY_TABLE, lock_flag
     PRIORITY_TABLE = {}
-    lock_flag = 0
+    lock_flag = False
     await ctx.send("Raid priority is now open!")
 
 
@@ -163,14 +108,18 @@ async def request(ctx, *args):
         # cause it separate by space in message retrieval
         # cause it dumb.
         request = " ".join(list(args))
+
         if request.count("/") == 2:
             info = request.split("/")
             PRIORITY_TABLE[info[0]] = info[1:] + [datetime.utcnow(), ]
             reply = "Noted!"
+
         else:
             reply = "Um, maybe use !help first, love. It looks like you made too many or too little requests.:thinking:"
+
     else:
         reply = "Raid priority is locked. Sorry!"
+
     await ctx.send(reply)
 
 
@@ -179,7 +128,7 @@ async def request(ctx, *args):
 async def lock(ctx):
     # raise flag for no more soft reserves
     global lock_flag
-    lock_flag = 1
+    lock_flag = True
     await ctx.send("Raid priority is now locked!")
 
 
@@ -188,7 +137,7 @@ async def lock(ctx):
 async def unlock(ctx):
     # lower flag for more soft reserves
     global lock_flag
-    lock_flag = 0
+    lock_flag = False
     await ctx.send("Raid priority is open once more!")
 
 
@@ -196,19 +145,18 @@ async def unlock(ctx):
 async def show(ctx):
     # print table of requests in private message
     if PRIORITY_TABLE != {}:
-        table = BeautifulTable()
-        table.column_headers = ["Name", "Class", "Item Requested", "Time of Request (UTC)"]
-        for key in PRIORITY_TABLE.keys():
-            time = PRIORITY_TABLE[key][2]
-            table.append_row([key, ] + PRIORITY_TABLE[key][:2] + ["{:02d}:{:02d}:{:02d}".format(time.hour, time.minute, time.second), ])
-        table.sort("Item Requested")
+        table = build_table_str(PRIORITY_TABLE, ["Name", "Class", "Item Requested", "Time of Request (UTC)"])
+
+        # get user private message channel, or create if doesn't exist
         user = ctx.author
         dm_channel = user.dm_channel
         if dm_channel is None:
             await user.create_dm()
             dm_channel = user.dm_channel
+
         await ctx.send("Sliding into your DMs :wink:")
-        await dm_channel.send("```" + str(table) + "```")
+        await dm_channel.send(table)
+
     else:
         await ctx.send("Nothing to show yet!")
 
@@ -218,13 +166,9 @@ async def show(ctx):
 async def showall(ctx):
     # print table of requests in channel
     if PRIORITY_TABLE != {}:
-        table = BeautifulTable()
-        table.column_headers = ["Name", "Class", "Item Requested", "Time of Request (UTC)"]
-        for key in PRIORITY_TABLE.keys():
-            time = PRIORITY_TABLE[key][2]
-            table.append_row([key, ] + PRIORITY_TABLE[key][:2] + ["{:02d}:{:02d}:{:02d}".format(time.hour, time.minute, time.second), ])
-        table.sort("Item Requested")
-        await ctx.send("```" + str(table) + "```")
+        table = build_table_str(PRIORITY_TABLE, ["Name", "Class", "Item Requested", "Time of Request (UTC)"])
+        await ctx.send(table)
+
     else:
         await ctx.send("Nothing to show yet!")
 
@@ -237,7 +181,9 @@ async def boss(ctx):
 
 try:
     bot.run(token)
+
 except RuntimeError:
     print("Exiting messily.")
+
 except Exception as e:
     print(e)
