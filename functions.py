@@ -7,9 +7,15 @@ from info import AUTHOR, SOURCE, INVITE
 def build_table_str(DICTIONARY, headers):
     table = BeautifulTable()
     table.column_headers = headers
+    long = len(headers) > 3      # identify if need time and bool in table
     for key in DICTIONARY.keys():
-        time = DICTIONARY[key][2]
-        table.append_row([key, ] + DICTIONARY[key][:2] + ["{:02d}:{:02d}:{:02d}".format(time.hour, time.minute, time.second), ])
+        if long:
+            time = DICTIONARY[key][2]
+            time_str = "{:02d}:{:02d}:{:02d}".format(time.hour, time.minute, time.second)
+            item_received = "{}".format("Yes" if DICTIONARY[key][3] else "No")
+            table.append_row([key, ] + DICTIONARY[key][:2] + [time_str, item_received, ])
+        else:
+            table.append_row([key, ] + DICTIONARY[key])
     table.sort("Item Requested")
     table = "```" + str(table) + "```"
     return table
@@ -39,6 +45,16 @@ def write_help_admin():
         inline=False
     )
     embed_admin.add_field(
+        name="!lock",
+        value="Locks requests - no new ones accepted",
+        inline=False
+    )
+    embed_admin.add_field(
+        name="!unlock",
+        value="You done goofed and people need to change stuff? No problem!",
+        inline=False
+    )
+    embed_admin.add_field(
         name="!showall",
         value="Shows the table of requested items in the channel",
         inline=False
@@ -49,13 +65,13 @@ def write_help_admin():
         inline=False
     )
     embed_admin.add_field(
-        name="!lock",
-        value="Locks requests - no new ones accepted",
+        name="!receive <character name>",
+        value="Records the person who won their requested item",
         inline=False
     )
     embed_admin.add_field(
-        name="!unlock",
-        value="You done goofed and people need to change stuff? No problem!",
+        name="!winners",
+        value="Shows the table for people who won their requested item",
         inline=False
     )
     return embed_admin
@@ -67,7 +83,7 @@ def write_help_pleb():
         description="A list of basic commands:"
     )
     embed_pleb.add_field(
-        name="!request <name>/<class>/<item>",
+        name="!request <character name>/<role>/<item>",
         value="Request priority on an item for the upcoming raid\nIf your name is already on the list, will replace the previous item",
         inline=False
     )
