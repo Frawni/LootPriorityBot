@@ -6,6 +6,7 @@ BARE MINIMUM
 - !boss
 - !winners --> need to add mob name to table
 - make case insensitive
+- clean up trailing spaces from user-stupiditis
 
 POTENTIAL EXCEPTIONS (to be dealt with)
 - CommandNotFound (l 51)
