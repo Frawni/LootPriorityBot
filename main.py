@@ -4,6 +4,8 @@
 """
 BARE MINIMUM
 - !boss
+- !receive --> keeps track of who received their requested item
+- !winners --> shows people who won their requested item so far
 
 POTENTIAL EXCEPTIONS (to be dealt with)
 - CommandNotFound (l 51)
