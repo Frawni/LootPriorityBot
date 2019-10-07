@@ -65,7 +65,7 @@ def write_help_admin():
         inline=False
     )
     embed_admin.add_field(
-        name="!receive <character name>",
+        name="!itemwin <character name>",
         value="Records the person who won their requested item",
         inline=False
     )

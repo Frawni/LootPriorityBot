@@ -198,7 +198,7 @@ async def boss(ctx):
 
 @bot.command()
 @has_role(ADMIN_ROLE)
-async def receive(ctx, message):
+async def itemwin(ctx, message):
     try:
         PRIORITY_TABLE[message][3] = True
         await ctx.send("Congrats, {}!".format(message))
