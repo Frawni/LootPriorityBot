@@ -1,5 +1,7 @@
 local_settings.py
-
 __pycache__
 
-ve3/
+credentials.json
+token.pickle
+
+spreadsheetapi.py

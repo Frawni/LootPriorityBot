@@ -1,10 +1,9 @@
 # Author: Caroline Forest
-# Last updated: 7th Oct 2019
+# Last updated: 8th Oct 2019
 
 """
 BARE MINIMUM
 - !winners --> need to add mob name to table
-- name/role/class/item
 
 POTENTIAL EXCEPTIONS (to be dealt with)
 - CommandNotFound (l 51)
@@ -12,6 +11,10 @@ POTENTIAL EXCEPTIONS (to be dealt with)
 
 FEATURES
 - set admin role on bot invite (+ allow more than one role?)
+- deal with second channel, different commands
+- sort by class
+- sort by role
+- search function for tooltip/through table
 - !spreadsheet --> use google sheets api to have a shareable link
 - keep record of previous raids, and have appropriate commands for such
 - pretty stats based on previous raids?
@@ -96,7 +99,7 @@ async def help(ctx):
 
             channel = dm_channel
             change = False
-            await ctx.send("Sliding into your DMs, we don't want to spam, now. :wink:")
+            await ctx.send("Sliding into your DMs, we don't want to spam, now. :kissing_heart:")
 
     if change:
         last_help = datetime.utcnow()
@@ -122,7 +125,7 @@ async def request(ctx, *args):
             reply = "Noted!"
 
         else:
-            reply = "Um, maybe use !help first, love. It looks like you made too many or too little requests.:thinking:"
+            reply = "Um, maybe use **!help** first, love. It looks like you made too many or too little requests.:thinking:"
 
     else:
         reply = "Raid priority is locked. Sorry!"
@@ -134,8 +137,7 @@ async def request(ctx, *args):
 async def show(ctx):
     # print table of requests in private message
     if PRIORITY_TABLE != {}:
-        table = build_table_str(PRIORITY_TABLE, ["Name", "Class/Role", "Item Requested",
-                                                 "Time of Request (UTC)", "Received Item?"])
+        table = build_table_str(PRIORITY_TABLE)
 
         # get user private message channel, or create if doesn't exist
         user = ctx.author
