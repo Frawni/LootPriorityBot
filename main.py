@@ -26,12 +26,13 @@ FEATURES
 
 
 import discord
+import os
 from discord.ext.commands import Bot, has_role
 from datetime import datetime
 
 from functions import build_table_str, write_info, write_help
 
-from loot_data import BOSS_LOOT
+from loot_data import MC_BOSS_LOOT
 from config import (
     AUTHORIZED_CHANNELS, ADMIN_ROLE, PREFIX,
     PRIORITY_TABLE, ITEM, DATE, RECEIVED, HEADERS
@@ -118,8 +119,17 @@ async def request(ctx, *args):
         request = " ".join(list(args))
 
         if request.count("/") == 2:
-            info = request.split("/")
-            PRIORITY_TABLE[info[0]] = info[1:] + [datetime.utcnow(), False, ]
+            name, wow_class, item = request.split("/")
+            received_item = False
+            PRIORITY_TABLE[name] = [wow_class, item, datetime.utcnow(), received_item]
+            try:
+                oser = OpenSearch('item', item)
+                oser.search_results.get_tooltip_data()
+                image = oser.search_results.image
+                await ctx.send(file=discord.File(image))
+                os.remove(image)
+            except (OpenSearchError, SearchObjectError) as e:
+                await ctx.send(e)
             reply = "Noted!"
 
         else:
@@ -237,6 +247,5 @@ try:
 
 except RuntimeError:
     print("Exiting messily.")
-
 except Exception as e:
     print(e)
