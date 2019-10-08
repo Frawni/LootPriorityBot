@@ -1,5 +1,6 @@
 """
-Copied from https://github.com/mikeStr8s/ClassicBot
+Code was copied from https://github.com/mikeStr8s/ClassicBot but modifications were required since
+    wowhead's search api was changed.
 """
 
 
@@ -30,7 +31,7 @@ class OpenSearch:
 
         self.search_query = search_query
         self.command = command
-        self.search_results = self.search(SEARCH_OBJECT_TYPE[command])
+        self.search_result = self.search(SEARCH_OBJECT_TYPE[command])
 
     def search(self, type_id):
         """
@@ -48,24 +49,30 @@ class OpenSearch:
         Returns:
             SearchObject: The resulting search object being either the exact match or first response
         """
-        response = json.loads(requests.get(OPEN_SEARCH.format(self.search_query)).content)
+        resp = requests.get(OPEN_SEARCH.format(self.search_query))
+        # Why the heck this is needed I dont know, atleast wowhead returns what can be considered 99% json,
+        content = resp.content.decode().replace("items:", '"items":')
+        resp_results = json.loads(content)
         search_results = []
         try:
-            for idx, result in enumerate(response[7]):
-                if result[0] == type_id:
-                    result_name = re.sub('\s\([a-zA-z]+\)', '', response[1][idx])
-                    if result_name.lower() == self.search_query.lower():
-                        return self.build_search_object(result_name, self.command, result)
-                    search_results.append(self.build_search_object(result_name, self.command, result))
-        except IndexError:
+            for result in resp_results[1]["items"]:
+                result_name = result["name"][1:]
+                if result_name.lower() == self.search_query.lower():
+                    return self.build_search_object(result_name, self.command, result)
+                search_results.append(self.build_search_object(result_name, self.command, result))
+        except KeyError:
+            print("KeyError:", resp_results)
             raise OpenSearchError(
                 '{}, the {} you searched for returned no results.'.format(self.search_query, self.command))
         try:
             return search_results[0]
-        except:
+        except IndexError:
             raise OpenSearchError(
                 'The {0} search had no results for your search of {1}. Please try refining your search term OR writing the full name of the {0}'.format(
                     self.command, self.search_query))
+
+        # a = SearchObject("sulfuras", "item", 17182, icon_name="inv_hammer_unique_sulfuras")
+        # return a
 
     @staticmethod
     def build_search_object(name, command, result):
@@ -79,15 +86,11 @@ class OpenSearch:
 
         Returns:
             SearchObject: The search object that is populated with the resulting attributes
+
+        result = {"classs": 2, "displayid": 29698, "dps": 80.41, "flags2": 8192, "id": 17182, "level": 80, "name": "3Sulfuras, Hand of Ragnaros", "reqlevel": 60, "slot": 17, "slotbak": 17, "speed": 3.7, "subclass": 5, "dmgmax1": 372, "dmgmin1": 223, "dmgrange": 1.0, "dmgtype1": 0, "dura": 145, "firres": 30, "maxcount": 1, "mledmgmax": 372, "mledmgmin": 223, "mledps": 80.41, "mlespeed": 3.7, "sellprice": 332623, "sheathtype": 1, "sta": 12, "str": 12, "icon": "inv_hammer_unique_sulfuras", "attainable": 0, "statsInfo": {"4": {"qty": 12, "alloc": 0, "socketMult": 0}, "7": {"qty": 12, "alloc": 0, "socketMult": 0}}, "chanceBonuses": []}
+
         """
-        args = [name, command, result[1]]
-        try:
-            args.append(result[2])
-            args.append(result[3])
-        except IndexError:
-            return SearchObject(*args)
-        else:
-            return SearchObject(*args)
+        return SearchObject(name=name, obj_type=command, obj_id=result["id"], icon_name=result["icon"])
 
 
 class SearchObject:
@@ -106,7 +109,7 @@ class SearchObject:
             if not isinstance(quality, (str, int)):
                 raise SearchObjectError('The argument provided was not of type str or int: {}'.format(type(quality)))
 
-        self.result_name = name
+        self.name = name
         self.object_type = obj_type
         self.object_id = obj_id
         self.icon_name = icon_name
@@ -122,7 +125,7 @@ class SearchObject:
             raise SearchObjectError(
                 '{0} {1} does not comply with parser structure. Please refine search if this was not the {1} that was intended.\n'
                 'If you believe this to be an error, please submit an issue here: https://github.com/mikeStr8s/ClassicBot/issues'.format(
-                    self.object_type, self.result_name))
+                    self.object_type, self.name))
         self.tooltip = self.parse_tooltip(raw_tooltip)
         self.build_image()
 
