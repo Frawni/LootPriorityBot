@@ -2,6 +2,7 @@ import discord
 from beautifultable import BeautifulTable
 
 from info import AUTHOR, SOURCE, INVITE
+from config import ITEM, DATE, RECEIVED
 
 
 def build_table_str(DICTIONARY, headers):
@@ -10,13 +11,13 @@ def build_table_str(DICTIONARY, headers):
     long = len(headers) > 3      # identify if need time and bool in table
     for key in DICTIONARY.keys():
         if long:
-            time = DICTIONARY[key][2]
+            time = DICTIONARY[key][DATE]
             time_str = "{:02d}:{:02d}:{:02d}".format(time.hour, time.minute, time.second)
-            item_received = "{}".format("Yes" if DICTIONARY[key][3] else "No")
-            table.append_row([key, ] + DICTIONARY[key][:2] + [time_str, item_received, ])
+            item_received = "{}".format("Yes" if DICTIONARY[key][RECEIVED] else "No")
+            table.append_row([key, ] + DICTIONARY[key][:DATE] + [time_str, item_received, ])
         else:
             table.append_row([key, ] + DICTIONARY[key])
-    table.sort("Item Requested")
+    table.sort(headers[ITEM])
     table = "```" + str(table) + "```"
     return table
 
