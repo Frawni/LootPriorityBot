@@ -1,5 +1,5 @@
 # Author: Caroline Forest
-# Last updated: 6th Oct 2019
+# Last updated: 7th Oct 2019
 
 """
 BARE MINIMUM
@@ -7,6 +7,7 @@ BARE MINIMUM
 - !winners --> need to add mob name to table
 - make case insensitive
 - clean up trailing spaces from user-stupiditis
+- name/role/class/item
 
 POTENTIAL EXCEPTIONS (to be dealt with)
 - CommandNotFound (l 51)
@@ -30,7 +31,11 @@ from datetime import datetime
 
 from functions import build_table_str, write_info, write_help
 
-from config import AUTHORIZED_CHANNELS, ADMIN_ROLE, PREFIX
+from loot_data import BOSS_LOOT
+from config import (
+    AUTHORIZED_CHANNELS, ADMIN_ROLE, PREFIX,
+    PRIORITY_TABLE, ITEM, DATE, RECEIVED, HEADERS
+)
 from settings import token
 
 
@@ -38,7 +43,6 @@ from settings import token
 bot = Bot(command_prefix=PREFIX)
 bot.remove_command("help")
 
-PRIORITY_TABLE = {}      # "<name>": ["<class>", "<item>", UTC datetime, received_item bool]
 lock_flag = True         # bool (true when locked, false when unlocked)
 
 # Prevent spam --> PM if less than an hour in channel
@@ -182,8 +186,7 @@ async def unlock(ctx):
 async def showall(ctx):
     # print table of requests in channel
     if PRIORITY_TABLE != {}:
-        table = build_table_str(PRIORITY_TABLE, ["Name", "Class/Role", "Item Requested",
-                                                 "Time of Request (UTC)", "Received Item?"])
+        table = build_table_str(PRIORITY_TABLE, HEADERS)
         await ctx.send(table)
 
     else:
@@ -192,16 +195,27 @@ async def showall(ctx):
 
 @bot.command()
 @has_role(ADMIN_ROLE)
-async def boss(ctx):
-    pass
+async def boss(ctx, boss_name):
+    try:
+        POTENTIAL_LOOT = BOSS_LOOT[boss_name]
+        RELEVANT_TABLE = {}
+        for item_num in POTENTIAL_LOOT.keys():
+            item_name = POTENTIAL_LOOT[item_num]
+            for character_name in PRIORITY_TABLE.keys():
+                if PRIORITY_TABLE[character_name][ITEM] == item_name:
+                    RELEVANT_TABLE[character_name] = PRIORITY_TABLE[character_name]
+        message = build_table_str(RELEVANT_TABLE, HEADERS)
+    except KeyError:
+        message = "I don't know this boss, sorry!"
+    await ctx.send(message)
 
 
 @bot.command()
 @has_role(ADMIN_ROLE)
-async def itemwin(ctx, message):
+async def itemwin(ctx, character_name):
     try:
-        PRIORITY_TABLE[message][3] = True
-        await ctx.send("Congrats, {}!".format(message))
+        PRIORITY_TABLE[character_name][RECEIVED] = True
+        await ctx.send("Congrats, {}!".format(character_name))
     except KeyError:
         await ctx.send("This name isn't in my list. :frowning:")
 
@@ -212,9 +226,9 @@ async def winners(ctx):
     if PRIORITY_TABLE != {}:
         WINNERS = {}
         for key in PRIORITY_TABLE.keys():
-            if PRIORITY_TABLE[key][3]:
-                WINNERS[key] = PRIORITY_TABLE[key][:2]
-        table = build_table_str(WINNERS, ["Name", "Class/Role", "Item Requested"])
+            if PRIORITY_TABLE[key][RECEIVED]:
+                WINNERS[key] = PRIORITY_TABLE[key][:DATE]
+        table = build_table_str(WINNERS, HEADERS[:DATE])
         await ctx.send(table)
 
 
