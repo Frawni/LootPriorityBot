@@ -4,7 +4,6 @@
 """
 BARE MINIMUM
 - !winners --> need to add mob name to table
-- name/role/class/item
 
 POTENTIAL EXCEPTIONS (to be dealt with)
 - CommandNotFound (l 51)

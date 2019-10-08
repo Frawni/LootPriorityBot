@@ -6,7 +6,7 @@ from config import HEADERS
 
 
 def build_table_str(DICTIONARY):
-    table = BeautifulTable()
+    table = BeautifulTable(max_width=120)
     table.column_headers = HEADERS
     for key in DICTIONARY.keys():
         request = DICTIONARY[key]
