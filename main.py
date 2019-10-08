@@ -3,10 +3,7 @@
 
 """
 BARE MINIMUM
-- !boss
 - !winners --> need to add mob name to table
-- make case insensitive
-- clean up trailing spaces from user-stupiditis
 - name/role/class/item
 
 POTENTIAL EXCEPTIONS (to be dealt with)
@@ -28,14 +25,12 @@ FEATURES
 import discord
 from discord.ext.commands import Bot, has_role
 from datetime import datetime
+from recordclass import recordclass
 
 from functions import build_table_str, write_info, write_help
 
-from loot_data import BOSS_LOOT
-from config import (
-    AUTHORIZED_CHANNELS, ADMIN_ROLE, PREFIX,
-    PRIORITY_TABLE, ITEM, DATE, RECEIVED, HEADERS
-)
+from loot_data import MC_BOSS_LOOT
+from config import AUTHORIZED_CHANNELS, ADMIN_ROLE, PREFIX
 from settings import token
 
 
@@ -43,6 +38,8 @@ from settings import token
 bot = Bot(command_prefix=PREFIX)
 bot.remove_command("help")
 
+PRIORITY_TABLE = {}      # "<name>": Request recordclass
+Request = recordclass("Request", ["role", "wow_class", "item", "datetime", "received_item"])
 lock_flag = True         # bool (true when locked, false when unlocked)
 
 # Prevent spam --> PM if less than an hour in channel
@@ -117,9 +114,10 @@ async def request(ctx, *args):
         # cause it dumb.
         request = " ".join(list(args))
 
-        if request.count("/") == 2:
-            info = request.split("/")
-            PRIORITY_TABLE[info[0]] = info[1:] + [datetime.utcnow(), False, ]
+        if request.count("/") == 3:
+            name, role, wow_class, item = [info.strip().casefold() for info in request.split("/")]
+            PRIORITY_TABLE[name] = Request(role=role, wow_class=wow_class, item=item,
+                                           datetime=datetime.utcnow(), received_item=False)
             reply = "Noted!"
 
         else:
@@ -186,7 +184,7 @@ async def unlock(ctx):
 async def showall(ctx):
     # print table of requests in channel
     if PRIORITY_TABLE != {}:
-        table = build_table_str(PRIORITY_TABLE, HEADERS)
+        table = build_table_str(PRIORITY_TABLE)
         await ctx.send(table)
 
     else:
@@ -197,14 +195,14 @@ async def showall(ctx):
 @has_role(ADMIN_ROLE)
 async def boss(ctx, boss_name):
     try:
-        POTENTIAL_LOOT = BOSS_LOOT[boss_name]
+        POTENTIAL_LOOT = MC_BOSS_LOOT[boss_name.casefold()]
         RELEVANT_TABLE = {}
         for item_num in POTENTIAL_LOOT.keys():
             item_name = POTENTIAL_LOOT[item_num]
             for character_name in PRIORITY_TABLE.keys():
-                if PRIORITY_TABLE[character_name][ITEM] == item_name:
+                if PRIORITY_TABLE[character_name].item.casefold() == item_name.casefold():
                     RELEVANT_TABLE[character_name] = PRIORITY_TABLE[character_name]
-        message = build_table_str(RELEVANT_TABLE, HEADERS)
+        message = build_table_str(RELEVANT_TABLE)
     except KeyError:
         message = "I don't know this boss, sorry!"
     await ctx.send(message)
@@ -214,7 +212,7 @@ async def boss(ctx, boss_name):
 @has_role(ADMIN_ROLE)
 async def itemwin(ctx, character_name):
     try:
-        PRIORITY_TABLE[character_name][RECEIVED] = True
+        PRIORITY_TABLE[character_name.casefold()].received_item = True
         await ctx.send("Congrats, {}!".format(character_name))
     except KeyError:
         await ctx.send("This name isn't in my list. :frowning:")
@@ -226,9 +224,9 @@ async def winners(ctx):
     if PRIORITY_TABLE != {}:
         WINNERS = {}
         for key in PRIORITY_TABLE.keys():
-            if PRIORITY_TABLE[key][RECEIVED]:
-                WINNERS[key] = PRIORITY_TABLE[key][:DATE]
-        table = build_table_str(WINNERS, HEADERS[:DATE])
+            if PRIORITY_TABLE[key].received_item:
+                WINNERS[key] = PRIORITY_TABLE[key]
+        table = build_table_str(WINNERS)
         await ctx.send(table)
 
 

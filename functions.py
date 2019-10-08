@@ -2,22 +2,19 @@ import discord
 from beautifultable import BeautifulTable
 
 from info import AUTHOR, SOURCE, INVITE
-from config import ITEM, DATE, RECEIVED
+from config import HEADERS
 
 
-def build_table_str(DICTIONARY, headers):
+def build_table_str(DICTIONARY):
     table = BeautifulTable()
-    table.column_headers = headers
-    long = len(headers) > 3      # identify if need time and bool in table
+    table.column_headers = HEADERS
     for key in DICTIONARY.keys():
-        if long:
-            time = DICTIONARY[key][DATE]
-            time_str = "{:02d}:{:02d}:{:02d}".format(time.hour, time.minute, time.second)
-            item_received = "{}".format("Yes" if DICTIONARY[key][RECEIVED] else "No")
-            table.append_row([key, ] + DICTIONARY[key][:DATE] + [time_str, item_received, ])
-        else:
-            table.append_row([key, ] + DICTIONARY[key])
-    table.sort(headers[ITEM])
+        request = DICTIONARY[key]
+        time = request.datetime
+        time_str = "{:02d}:{:02d}:{:02d}".format(time.hour, time.minute, time.second)
+        item_received = "{}".format("Yes" if request.received_item else "No")
+        table.append_row([key, request.role, request.wow_class, request.item, ] + [time_str, item_received, ])
+    table.sort(HEADERS[2])
     table = "```" + str(table) + "```"
     return table
 
@@ -84,8 +81,8 @@ def write_help_pleb():
         description="A list of basic commands:"
     )
     embed_pleb.add_field(
-        name="!request <character name>/<role>/<item>",
-        value="Request priority on an item for the upcoming raid\nIf your name is already on the list, will replace the previous item",
+        name="!request <character name>/<role>/<class>/<item>",
+        value="Request priority on an item for the upcoming raid\nIf your name is already on the list, it will replace the previous item",
         inline=False
     )
     embed_pleb.add_field(

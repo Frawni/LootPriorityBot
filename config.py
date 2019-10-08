@@ -5,10 +5,10 @@ ADMIN_ROLE = "tourist"
 AUTHORIZED_CHANNELS = ["mc-reserve-list", ]
 
 
-PRIORITY_TABLE = {}      # "<name>": ["<class>", "<item>", UTC datetime, received_item bool]
-CLASS = 0
-ITEM = 1
-DATE = 2
-RECEIVED = 3
-HEADERS = ["Name", "Class/Role", "Item Requested",
+ROLE = 0
+CLASS = 1
+ITEM = 2
+DATE = 3
+RECEIVED = 4
+HEADERS = ["Name", "Role", "Class", "Item Requested",
            "Time of Request (UTC)", "Received Item?"]
