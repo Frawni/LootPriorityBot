@@ -1,31 +1,36 @@
 import discord
-from beautifultable import BeautifulTable
+# from beautifultable import BeautifulTable
+from tabulate import tabulate
 
 from info import AUTHOR, SOURCE, INVITE
 from config import HEADERS
 
 
 def build_table(DICTIONARY):
-    table = BeautifulTable(max_width=120)
-    table.column_headers = HEADERS
+    # table = BeautifulTable(max_width=120)
+    # table.column_headers = HEADERS
+
+    table = []
     for key in DICTIONARY.keys():
         request = DICTIONARY[key]
         time = request.datetime
         time_str = "{:02d}:{:02d}:{:02d}".format(time.hour, time.minute, time.second)
         item_received = "{}".format("Yes" if request.received_item else "No")
-        table.append_row([key, request.role, request.wow_class, request.item, ] + [time_str, item_received, ])
-    table.sort(HEADERS[3])
+        # table.append_row([key, request.role, request.wow_class, request.item, ] + [time_str, item_received, ])
+        row = [key, request.role, request.wow_class, request.item, ] + [time_str, item_received, ]
+        table.append(row)
+    # table.sort(HEADERS[3])
 
     table_list = []
     row_count = len(table)
-    separator = 7
+    separator = 15
     i = 0
     while row_count > separator:
-        table_list.append("```" + str(table[(separator*i):(separator*(i+1))]) + "```")
+        table_list.append("```" + str(tabulate(table[(separator*i):(separator*(i+1))], headers=HEADERS, tablefmt="psql")) + "```")
         row_count -= separator
         i += 1
     else:
-        table_list.append("```" + str(table[(separator*i):]) + "```")
+        table_list.append("```" + str(tabulate(table[(separator*i):], headers=HEADERS, tablefmt="psql")) + "```")
     return table_list
 
 
