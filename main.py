@@ -36,7 +36,7 @@ from functions import build_table_str, write_info, write_help
 from loot_data import MC_BOSS_LOOT
 from config import AUTHORIZED_CHANNELS, ADMIN_ROLE, PREFIX
 from settings import token
-
+from open_search.open_search import OpenSearch, OpenSearchError, SearchObjectError
 
 # GLOBAL VARIABLES
 bot = Bot(command_prefix=PREFIX)
@@ -44,7 +44,7 @@ bot.remove_command("help")
 
 PRIORITY_TABLE = {}      # "<name>": Request recordclass
 Request = recordclass("Request", ["role", "wow_class", "item", "datetime", "received_item"])
-lock_flag = True         # bool (true when locked, false when unlocked)
+lock_flag = True        # bool (true when locked, false when unlocked)
 
 # Prevent spam --> PM if less than an hour in channel
 last_help = None   # last help message sent in channel
@@ -113,24 +113,69 @@ async def request(ctx, *args):
     # parse message for <name>/<class>/<item>
     # (one word for name and class right now)
     # and add/replace (if same name) to table
-    if not lock_flag:
-        # cause it separate by space in message retrieval
-        # cause it dumb.
-        request = " ".join(list(args))
-
-        if request.count("/") == 3:
-            name, role, wow_class, item = [info.strip().casefold() for info in request.split("/")]
-            PRIORITY_TABLE[name] = Request(role=role, wow_class=wow_class, item=item,
-                                           datetime=datetime.utcnow(), received_item=False)
-            reply = "Noted!"
-
-        else:
-            reply = "Um, maybe use **!help** first, love. It looks like you made too many or too little requests.:thinking:"
-
-    else:
+    if lock_flag:
         reply = "Raid priority is locked. Sorry!"
+        await ctx.send(reply)
+        return
 
-    await ctx.send(reply)
+    # cause it separate by space in message retrieval
+    # cause it dumb.
+    request = " ".join(list(args))
+    name, role, wow_class, item = [info.strip().casefold() for info in request.split("/")]
+    if request.count("/") != 3:
+        reply = "Um, maybe use **!help** first, love. It looks like you made too many or too little requests.:thinking:"
+        await ctx.send(reply)
+        return
+
+    try:
+        search = OpenSearch('item', item)
+    except OpenSearchError as e:
+        print(e)
+        await ctx.send("Could not find any matching items. Try again.")
+        return
+
+    # Valid item is one that we found on WoWhead and that is also part of our loot table
+    valid_item = None
+    for item in search.results:
+        for boss in MC_BOSS_LOOT:
+            if item.id in MC_BOSS_LOOT[boss]:
+                valid_item = item
+                break
+        else:
+            # If we didnt break out of inner loop, continue with outer
+            continue
+        # If we did break out of inner loop, break out of the outer too
+        break
+
+    if valid_item is None:
+        await ctx.send("Found some items but none matched the droptable from bosses for this raid. Try again.")
+        return
+
+    PRIORITY_TABLE[name] = Request(
+        role=role, wow_class=wow_class, item=item.name,
+        datetime=datetime.utcnow(), received_item=False
+    )
+    user = ctx.author
+    await ctx.send(
+        (
+            "Confirmed! Noting down {} for {}. "
+            "Check your DMs for the item's tooltip just to be sure!"
+        ).format(item.name, name)
+    )
+
+    dm = user.dm_channel
+    if dm is None:
+        await user.create_dm()
+        dm = user.dm_channel
+
+    try:
+        item.get_tooltip_data()
+    except SearchObjectError as e:
+        print(e)
+        await dm.send("Sorry! Something went wrong with the tooltip generation.")
+    else:
+        await dm.send(file=discord.File(item.image))
+        os.remove(item.image)
 
 
 @bot.command()
