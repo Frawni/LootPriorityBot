@@ -2,9 +2,6 @@
 # Last updated: 8th Oct 2019
 
 """
-BARE MINIMUM
-- !winners --> need to add mob name to table
-
 POTENTIAL EXCEPTIONS (to be dealt with)
 - CommandNotFound (l 51)
 - MissingRole (ll 148, 175, 184, 209, 222)
@@ -15,6 +12,8 @@ FEATURES
 - sort by class
 - sort by role
 - search function for tooltip/through table
+- add boss name when receiving loot
+- identify who hasn't made a request yet/count number of people requesting/items requested
 - !spreadsheet --> use google sheets api to have a shareable link
 - keep record of previous raids, and have appropriate commands for such
 - pretty stats based on previous raids?
@@ -31,7 +30,7 @@ from discord.ext.commands import Bot, has_role
 from datetime import datetime
 from recordclass import recordclass
 
-from functions import build_table_str, write_info, write_help
+from functions import build_table, write_info, write_help
 
 from loot_data import MC_BOSS_LOOT
 from config import AUTHORIZED_CHANNELS, ADMIN_ROLE, PREFIX
@@ -182,8 +181,6 @@ async def request(ctx, *args):
 async def show(ctx):
     # print table of requests in private message
     if PRIORITY_TABLE != {}:
-        table = build_table_str(PRIORITY_TABLE)
-
         # get user private message channel, or create if doesn't exist
         user = ctx.author
         dm_channel = user.dm_channel
@@ -192,7 +189,10 @@ async def show(ctx):
             dm_channel = user.dm_channel
 
         await ctx.send("Sliding into your DMs :wink:")
-        await dm_channel.send(table)
+
+        table_list = build_table(PRIORITY_TABLE)
+        for table in table_list:
+            await dm_channel.send(table)
 
     else:
         await ctx.send("Nothing to show yet!")
@@ -232,9 +232,9 @@ async def unlock(ctx):
 async def showall(ctx):
     # print table of requests in channel
     if PRIORITY_TABLE != {}:
-        table = build_table_str(PRIORITY_TABLE)
-        await ctx.send(table)
-
+        table_list = build_table(PRIORITY_TABLE)
+        for table in table_list:
+            await ctx.send(table)
     else:
         await ctx.send("Nothing to show yet!")
 
@@ -250,10 +250,11 @@ async def boss(ctx, boss_name):
             for character_name in PRIORITY_TABLE.keys():
                 if PRIORITY_TABLE[character_name].item.casefold() == item_name.casefold():
                     RELEVANT_TABLE[character_name] = PRIORITY_TABLE[character_name]
-        message = build_table_str(RELEVANT_TABLE)
+        table_list = build_table(RELEVANT_TABLE)
+        for table in table_list:
+            await ctx.send(table)
     except KeyError:
-        message = "I don't know this boss, sorry!"
-    await ctx.send(message)
+        await ctx.send("I don't know this boss, sorry!")
 
 
 @bot.command()
@@ -274,8 +275,45 @@ async def winners(ctx):
         for key in PRIORITY_TABLE.keys():
             if PRIORITY_TABLE[key].received_item:
                 WINNERS[key] = PRIORITY_TABLE[key]
-        table = build_table_str(WINNERS)
-        await ctx.send(table)
+        table_list = build_table(WINNERS)
+        for table in table_list:
+            await ctx.send(table)
+
+
+# QUICK AND DIRTY AUTOMATION OF TEXT CAUSE I CAN'T SEEM TO BE ABLE TO READ BOT MESSAGES
+# @bot.command()
+# async def doit(ctx):
+#     with open("requests.txt", "r") as f:
+#         for line in f:
+#             name, role, wow_class, item = [info.strip().casefold() for info in line.split("/")]
+#             try:
+#                 search = OpenSearch('item', item)
+#             except OpenSearchError as e:
+#                 print(e)
+#                 await ctx.send("Could not find any matching items. Try again.")
+#                 return
+#
+#             valid_item = None
+#             for item in search.results:
+#                 for boss in MC_BOSS_LOOT:
+#                     if item.id in MC_BOSS_LOOT[boss]:
+#                         valid_item = item
+#                         break
+#                 else:
+#                     continue
+#                 break
+#
+#             if valid_item is None:
+#                 await ctx.send("Found some items but none matched the droptable from bosses for this raid. Try again.")
+#                 return
+#
+#             PRIORITY_TABLE[name] = Request(
+#                 role=role, wow_class=wow_class, item=item.name,
+#                 datetime=datetime.utcnow(), received_item=False
+#             )
+#     table_list = build_table(PRIORITY_TABLE)
+#     for table in table_list:
+#         await ctx.send(table)
 
 
 try:

@@ -5,7 +5,7 @@ from info import AUTHOR, SOURCE, INVITE
 from config import HEADERS
 
 
-def build_table_str(DICTIONARY):
+def build_table(DICTIONARY):
     table = BeautifulTable(max_width=120)
     table.column_headers = HEADERS
     for key in DICTIONARY.keys():
@@ -14,9 +14,19 @@ def build_table_str(DICTIONARY):
         time_str = "{:02d}:{:02d}:{:02d}".format(time.hour, time.minute, time.second)
         item_received = "{}".format("Yes" if request.received_item else "No")
         table.append_row([key, request.role, request.wow_class, request.item, ] + [time_str, item_received, ])
-    table.sort(HEADERS[2])
-    table = "```" + str(table) + "```"
-    return table
+    table.sort(HEADERS[3])
+
+    table_list = []
+    row_count = len(table)
+    separator = 7
+    i = 0
+    while row_count > separator:
+        table_list.append("```" + str(table[(separator*i):(separator*(i+1))]) + "```")
+        row_count -= separator
+        i += 1
+    else:
+        table_list.append("```" + str(table[(separator*i):]) + "```")
+    return table_list
 
 
 def write_info():
