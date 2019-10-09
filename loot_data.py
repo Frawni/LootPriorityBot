@@ -1,3 +1,6 @@
+"""
+Yes, this list was compiled and formatted by hand.
+"""
 MC_BOSS_LOOT = {
     "lucifron": {
         7068: "Elemental Fire",
