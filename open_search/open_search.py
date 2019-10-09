@@ -31,7 +31,8 @@ class OpenSearch:
 
         self.search_query = search_query
         self.command = command
-        self.search_result = self.search(SEARCH_OBJECT_TYPE[command])
+        self.results = []
+        self.search(SEARCH_OBJECT_TYPE[command])
 
     def search(self, type_id):
         """
@@ -53,24 +54,14 @@ class OpenSearch:
         # Why the heck this is needed I dont know, atleast wowhead returns what can be considered 99% json,
         content = resp.content.decode().replace("items:", '"items":')
         resp_results = json.loads(content)
-        search_results = []
         try:
             for result in resp_results[1]["items"]:
                 result_name = result["name"].lstrip("1234567890")
-                search_results.append(self.build_search_object(result_name, self.command, result))
+                self.results.append(self.build_search_object(result_name, self.command, result))
         except KeyError:
             print("KeyError:", resp_results)
             raise OpenSearchError(
                 '{}, the {} you searched for returned no results.'.format(self.search_query, self.command))
-        try:
-            return search_results[0]
-        except IndexError:
-            raise OpenSearchError(
-                'The {0} search had no results for your search of {1}. Please try refining your search term OR writing the full name of the {0}'.format(
-                    self.command, self.search_query))
-
-        # a = SearchObject("sulfuras", "item", 17182, icon_name="inv_hammer_unique_sulfuras")
-        # return a
 
     @staticmethod
     def build_search_object(name, command, result):

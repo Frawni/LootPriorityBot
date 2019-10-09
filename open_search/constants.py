@@ -29,7 +29,7 @@ LINE_HEIGHT = 17
 LARGE_PADDING = 10
 SMALL_PADDING = 5
 INDENT = 20
-MAX_CHARS = 47
+MAX_CHARS = 44
 COLORS = {
     'q': (255, 209, 0),  # Yellow (used for item levels)
     'q0': (157, 157, 157),  # Grey
