@@ -56,9 +56,7 @@ class OpenSearch:
         search_results = []
         try:
             for result in resp_results[1]["items"]:
-                result_name = result["name"][1:]
-                if result_name.lower() == self.search_query.lower():
-                    return self.build_search_object(result_name, self.command, result)
+                result_name = result["name"].lstrip("1234567890")
                 search_results.append(self.build_search_object(result_name, self.command, result))
         except KeyError:
             print("KeyError:", resp_results)
@@ -87,7 +85,18 @@ class OpenSearch:
         Returns:
             SearchObject: The search object that is populated with the resulting attributes
 
-        result = {"classs": 2, "displayid": 29698, "dps": 80.41, "flags2": 8192, "id": 17182, "level": 80, "name": "3Sulfuras, Hand of Ragnaros", "reqlevel": 60, "slot": 17, "slotbak": 17, "speed": 3.7, "subclass": 5, "dmgmax1": 372, "dmgmin1": 223, "dmgrange": 1.0, "dmgtype1": 0, "dura": 145, "firres": 30, "maxcount": 1, "mledmgmax": 372, "mledmgmin": 223, "mledps": 80.41, "mlespeed": 3.7, "sellprice": 332623, "sheathtype": 1, "sta": 12, "str": 12, "icon": "inv_hammer_unique_sulfuras", "attainable": 0, "statsInfo": {"4": {"qty": 12, "alloc": 0, "socketMult": 0}, "7": {"qty": 12, "alloc": 0, "socketMult": 0}}, "chanceBonuses": []}
+        result = {"classs": 2, "displayid": 29698, "dps": 80.41, "flags2": 8192, "id": 17182,
+            "level": 80, "name": "3Sulfuras, Hand of Ragnaros", "reqlevel": 60, "slot": 17,
+            "slotbak": 17, "speed": 3.7, "subclass": 5, "dmgmax1": 372, "dmgmin1": 223,
+            "dmgrange": 1.0, "dmgtype1": 0, "dura": 145, "firres": 30, "maxcount": 1,
+            "mledmgmax": 372, "mledmgmin": 223, "mledps": 80.41, "mlespeed": 3.7,
+            "sellprice": 332623, "sheathtype": 1, "sta": 12, "str": 12,
+            "icon": "inv_hammer_unique_sulfuras", "attainable": 0,
+            "statsInfo": {
+                "4": {"qty": 12, "alloc": 0, "socketMult": 0},
+                "7": {"qty": 12, "alloc": 0, "socketMult": 0}
+            },
+            "chanceBonuses": []}
 
         """
         return SearchObject(name=name, obj_type=command, obj_id=result["id"], icon_name=result["icon"])
@@ -111,14 +120,14 @@ class SearchObject:
 
         self.name = name
         self.object_type = obj_type
-        self.object_id = obj_id
+        self.id = obj_id
         self.icon_name = icon_name
         self.quality = quality
         self.tooltip = None
         self.image = None
 
     def get_tooltip_data(self):
-        response = json.loads(requests.get(TOOLTIP.format(self.object_type, self.object_id)).content)
+        response = json.loads(requests.get(TOOLTIP.format(self.object_type, self.id)).content)
         try:
             raw_tooltip = self.clean_tooltip_data(response['tooltip'])
         except AttributeError:
