@@ -1,9 +1,9 @@
 # Author: Caroline Forest
-# Last updated: 12th Oct 2019
+# Last updated: 13th Oct 2019
 
 """
 FIX
-- order list base on column
+- message not popping up in sorting part of table builder
 
 POTENTIAL EXCEPTIONS (to be dealt with)
 - CommandNotFound (l 51)
@@ -12,8 +12,6 @@ POTENTIAL EXCEPTIONS (to be dealt with)
 FEATURES
 - set admin role on bot invite (+ allow more than one role?)
 - deal with second channel, different commands
-- sort by class
-- sort by role
 - search function for tooltip/through table
 - add boss name when receiving loot
 - identify who hasn't made a request yet/count number of people requesting/items requested
@@ -125,7 +123,7 @@ async def request(ctx, *args):
     request = " ".join(list(args))
     name, role, wow_class, item = [info.strip().casefold() for info in request.split("/")]
     if request.count("/") != 3:
-        reply = "Um, maybe use **!help** first, love. It looks like you made too many or too little requests.:thinking:"
+        reply = "Um, maybe use **!help** first, love. It looks like you forgot something.:thinking:"
         await ctx.send(reply)
         return
 
@@ -181,7 +179,7 @@ async def request(ctx, *args):
 
 
 @bot.command()
-async def show(ctx):
+async def show(ctx, *message):
     # print table of requests in private message
     if PRIORITY_TABLE != {}:
         # get user private message channel, or create if doesn't exist
@@ -193,7 +191,10 @@ async def show(ctx):
 
         await ctx.send("Sliding into your DMs :wink:")
 
-        table_list = build_table(PRIORITY_TABLE)
+        if message:
+            table_list = build_table(PRIORITY_TABLE, " ".join(message))
+        else:
+            table_list = build_table(PRIORITY_TABLE)
         for table in table_list:
             await dm_channel.send(table)
 
@@ -232,10 +233,13 @@ async def unlock(ctx):
 
 @bot.command()
 @has_role(ADMIN_ROLE)
-async def showall(ctx):
+async def showall(ctx, *message):
     # print table of requests in channel
     if PRIORITY_TABLE != {}:
-        table_list = build_table(PRIORITY_TABLE)
+        if message:
+            table_list = build_table(PRIORITY_TABLE, " ".join(message))
+        else:
+            table_list = build_table(PRIORITY_TABLE)
         for table in table_list:
             await ctx.send(table)
     else:

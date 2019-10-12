@@ -5,8 +5,10 @@ from info import AUTHOR, SOURCE, INVITE
 from config import HEADERS
 
 
-def build_table(DICTIONARY):
+def build_table(DICTIONARY, sort_by="item"):
     table = []
+    table_list = []
+
     for key in DICTIONARY.keys():
         request = DICTIONARY[key]
         time = request.datetime
@@ -14,18 +16,28 @@ def build_table(DICTIONARY):
         item_received = "{}".format("Yes" if request.received_item else "No")
         row = [key, request.role, request.wow_class, request.item, ] + [time_str, item_received, ]
         table.append(row)
-    # ordered_table = [name, request in sorted(DICTIONARY.items(), key=lambda x: x[1].item)]
 
-    table_list = []
-    row_count = len(table)
+    index = HEADERS.index("Item Requested")
+    for header in HEADERS:
+        if header.casefold().startswith(sort_by):
+            index = HEADERS.index(header)
+            break
+    try:
+        ordered_table = sorted(table, key=lambda x: x[index])
+    except NameError:
+        table_list.append("I'm not sure how you want me to sort this, so here are the requests by items. :grin:")
+        # not sure why this message isn't popping up - too sleepy to solve atm
+
+    row_count = len(ordered_table)
     separator = 12
     i = 0
+
     while row_count > separator:
-        table_list.append("```" + tabulate(table[(separator*i):(separator*(i+1))], headers=HEADERS, tablefmt="psql") + "```")
+        table_list.append("```" + tabulate(ordered_table[(separator*i):(separator*(i+1))], headers=HEADERS, tablefmt="psql") + "```")
         row_count -= separator
         i += 1
-    else:
-        table_list.append("```" + tabulate(table[(separator*i):], headers=HEADERS, tablefmt="psql") + "```")
+    table_list.append("```" + tabulate(ordered_table[(separator*i):], headers=HEADERS, tablefmt="psql") + "```")
+
     return table_list
 
 
@@ -63,8 +75,8 @@ def write_help_admin():
         inline=False
     )
     embed_admin.add_field(
-        name="!showall",
-        value="Shows the table of requested items in the channel",
+        name="!showall (<filter>)",
+        value="Shows the table of requested items in the channel, same functionality as !show",
         inline=False
     )
     embed_admin.add_field(
@@ -96,8 +108,8 @@ def write_help_pleb():
         inline=False
     )
     embed_pleb.add_field(
-        name="!show",
-        value="Sends you the table of existing requests",
+        name="!show (<filter>)",
+        value="Sends you the table of existing requests, can add the name of the column to filter by",
         inline=False
     )
     embed_pleb.add_field(
