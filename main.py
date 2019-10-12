@@ -2,11 +2,15 @@
 # Last updated: 8th Oct 2019
 
 """
+FIX
+- order list base on column
+
 POTENTIAL EXCEPTIONS (to be dealt with)
 - CommandNotFound (l 51)
 - MissingRole (ll 148, 175, 184, 209, 222)
 
 FEATURES
+- allow for trash drop as well as boss loot
 - set admin role on bot invite (+ allow more than one role?)
 - deal with second channel, different commands
 - sort by class
@@ -241,7 +245,8 @@ async def showall(ctx):
 
 @bot.command()
 @has_role(ADMIN_ROLE)
-async def boss(ctx, boss_name):
+async def boss(ctx, *args):
+    boss_name = " ".join(args)
     try:
         POTENTIAL_LOOT = MC_BOSS_LOOT[boss_name.casefold()]
         RELEVANT_TABLE = {}
@@ -280,40 +285,40 @@ async def winners(ctx):
             await ctx.send(table)
 
 
-# QUICK AND DIRTY AUTOMATION OF TEXT CAUSE I CAN'T SEEM TO BE ABLE TO READ OTHER BOT MESSAGES
-@bot.command()
-async def doit(ctx):
-    with open("requests.txt", "r") as f:
-        for line in f:
-            name, role, wow_class, item = [info.strip().casefold() for info in line.split("/")]
-            try:
-                search = OpenSearch('item', item)
-            except OpenSearchError as e:
-                print(e)
-                await ctx.send("Could not find any matching items. Try again.")
-                return
-
-            valid_item = None
-            for item in search.results:
-                for boss in MC_BOSS_LOOT:
-                    if item.id in MC_BOSS_LOOT[boss]:
-                        valid_item = item
-                        break
-                else:
-                    continue
-                break
-
-            if valid_item is None:
-                await ctx.send("Found some items but none matched the droptable from bosses for this raid. Try again.")
-                return
-
-            PRIORITY_TABLE[name] = Request(
-                role=role, wow_class=wow_class, item=item.name,
-                datetime=datetime.utcnow(), received_item=False
-            )
-    table_list = build_table(PRIORITY_TABLE)
-    for table in table_list:
-        await ctx.send(table)
+# # QUICK AND DIRTY AUTOMATION OF TEXT CAUSE I CAN'T SEEM TO BE ABLE TO READ OTHER BOT MESSAGES
+# @bot.command()
+# async def doit(ctx):
+#     with open("requests.txt", "r") as f:
+#         for line in f:
+#             name, role, wow_class, item = [info.strip().casefold() for info in line.split("/")]
+#             try:
+#                 search = OpenSearch('item', item)
+#             except OpenSearchError as e:
+#                 print(e)
+#                 await ctx.send("Could not find any matching items. Try again.")
+#                 return
+#
+#             # valid_item = None
+#             for item in search.results:
+#                 for boss in MC_BOSS_LOOT:
+#                     if item.id in MC_BOSS_LOOT[boss]:
+#                         # valid_item = item
+#                         break
+#                 else:
+#                     continue
+#                 break
+#
+#             # if valid_item is None:
+#             #     await ctx.send("Found some items but none matched the droptable from bosses for this raid. Try again.")
+#             #     return
+#
+#             PRIORITY_TABLE[name] = Request(
+#                 role=role, wow_class=wow_class, item=item.name,
+#                 datetime=datetime.utcnow(), received_item=False
+#             )
+#     table_list = build_table(PRIORITY_TABLE)
+#     for table in table_list:
+#         await ctx.send(table)
 
 
 try:
