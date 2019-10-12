@@ -4,7 +4,6 @@
 """
 FIX
 - order list base on column
-- way to put in boss name
 
 POTENTIAL EXCEPTIONS (to be dealt with)
 - CommandNotFound (l 51)
@@ -295,40 +294,40 @@ async def winners(ctx):
             await ctx.send(table)
 
 
-# QUICK AND DIRTY AUTOMATION OF TEXT CAUSE I CAN'T SEEM TO BE ABLE TO READ OTHER BOT MESSAGES
-@bot.command()
-async def doit(ctx):
-    with open("requests.txt", "r") as f:
-        for line in f:
-            name, role, wow_class, item = [info.strip().casefold() for info in line.split("/")]
-            try:
-                search = OpenSearch('item', item)
-            except OpenSearchError as e:
-                print(e)
-                await ctx.send("Could not find any matching items. Try again.")
-                return
-
-            # valid_item = None
-            for item in search.results:
-                for boss in MC_BOSS_LOOT:
-                    if item.id in MC_BOSS_LOOT[boss]:
-                        # valid_item = item
-                        break
-                else:
-                    continue
-                break
-
-            # if valid_item is None:
-            #     await ctx.send("Found some items but none matched the droptable from bosses for this raid. Try again.")
-            #     return
-
-            PRIORITY_TABLE[name] = Request(
-                role=role, wow_class=wow_class, item=item.name,
-                datetime=datetime.utcnow(), received_item=False
-            )
-    table_list = build_table(PRIORITY_TABLE)
-    for table in table_list:
-        await ctx.send(table)
+# # QUICK AND DIRTY AUTOMATION OF TEXT CAUSE I CAN'T SEEM TO BE ABLE TO READ OTHER BOT MESSAGES
+# @bot.command()
+# async def doit(ctx):
+#     with open("requests.txt", "r") as f:
+#         for line in f:
+#             name, role, wow_class, item = [info.strip().casefold() for info in line.split("/")]
+#             try:
+#                 search = OpenSearch('item', item)
+#             except OpenSearchError as e:
+#                 print(e)
+#                 await ctx.send("Could not find any matching items. Try again.")
+#                 return
+#
+#             # valid_item = None
+#             for item in search.results:
+#                 for boss in MC_BOSS_LOOT:
+#                     if item.id in MC_BOSS_LOOT[boss]:
+#                         # valid_item = item
+#                         break
+#                 else:
+#                     continue
+#                 break
+#
+#             # if valid_item is None:
+#             #     await ctx.send("Found some items but none matched the droptable from bosses for this raid. Try again.")
+#             #     return
+#
+#             PRIORITY_TABLE[name] = Request(
+#                 role=role, wow_class=wow_class, item=item.name,
+#                 datetime=datetime.utcnow(), received_item=False
+#             )
+#     table_list = build_table(PRIORITY_TABLE)
+#     for table in table_list:
+#         await ctx.send(table)
 
 
 try:
