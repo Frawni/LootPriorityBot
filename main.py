@@ -249,21 +249,23 @@ async def showall(ctx, *message):
 @bot.command()
 @has_role(ADMIN_ROLE)
 async def boss(ctx, *args):
-    boss_name = " ".join(args)
-    try:
-        POTENTIAL_LOOT = MC_BOSS_LOOT[boss_name.casefold()]
-    except KeyError:
-        found = False
-        for name in MC_BOSS_NAMES:
-            if name.startswith(boss_name.casefold()):
-                POTENTIAL_LOOT = MC_BOSS_LOOT[name]
-                found = True
-        if not found:
-            try:
-                POTENTIAL_LOOT = MC_BOSS_LOOT[MC_BOSS_NAMES[int(boss_name) - 1]]
-                found = True
-            except ValueError:
-                await ctx.send("I don't know this boss, sorry!")
+    input = " ".join(args)
+    # try:
+    #     POTENTIAL_LOOT = MC_BOSS_LOOT[input.casefold()]
+    # except KeyError:
+    found = False
+    for name in MC_BOSS_NAMES:
+        if name.startswith(input.casefold()):
+            boss_name = name
+            POTENTIAL_LOOT = MC_BOSS_LOOT[boss_name]
+            found = True
+    if not found:
+        try:
+            boss_name = MC_BOSS_NAMES[int(input) - 1]
+            POTENTIAL_LOOT = MC_BOSS_LOOT[boss_name]
+            found = True
+        except ValueError:
+            await ctx.send("I don't know this boss, sorry!")
     RELEVANT_TABLE = {}
     for item_num in POTENTIAL_LOOT.keys():
         item_name = POTENTIAL_LOOT[item_num]
@@ -271,6 +273,7 @@ async def boss(ctx, *args):
             if PRIORITY_TABLE[character_name].item.casefold() == item_name.casefold():
                 RELEVANT_TABLE[character_name] = PRIORITY_TABLE[character_name]
     table_list = build_table(RELEVANT_TABLE)
+    await ctx.send("**" + boss_name + "**")
     for table in table_list:
         await ctx.send(table)
 
