@@ -13,3 +13,4 @@ MC_BOSS_NAMES = ["lucifron", "magmadar", "gehennas", "garr",
                  "sulfuron harbringer", "majordomo executus", "ragnaros"]
 
 SAVE_FILEPATH = "current_raid.exe"
+PREVIOUS_SAVE_FILEPATH = "previous_raid.exe"

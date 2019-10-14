@@ -35,7 +35,10 @@ from functools import wraps
 from functions import build_table, write_info, write_help, json_dump, json_load
 
 from loot_data import MC_BOSS_LOOT
-from config import AUTHORIZED_CHANNELS, ADMIN_ROLE, PREFIX, MC_BOSS_NAMES, SAVE_FILEPATH
+from config import (
+    AUTHORIZED_CHANNELS, ADMIN_ROLE, PREFIX, MC_BOSS_NAMES,
+    SAVE_FILEPATH, PREVIOUS_SAVE_FILEPATH
+)
 from settings import token
 from open_search.open_search import OpenSearch, OpenSearchError, SearchObjectError
 
@@ -221,8 +224,17 @@ async def show(ctx, *message):
 @bot.command()
 @has_role(ADMIN_ROLE)
 async def newraid(ctx):
-    # initialize priority table and unlock soft reserves
     global PRIORITY_TABLE, lock_flag
+
+    to_save = [PRIORITY_TABLE, lock_flag]
+    with open(PREVIOUS_SAVE_FILEPATH, "w") as f:
+        json_dump(to_save, f)
+    try:
+        os.remove(SAVE_FILEPATH)
+    except FileNotFoundError:
+        pass
+
+    # initialize priority table and unlock soft reserves
     PRIORITY_TABLE = {}
     lock_flag = False
     await ctx.send("Raid priority is now open!")
