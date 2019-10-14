@@ -30,11 +30,12 @@ import os
 from discord.ext.commands import Bot, has_role
 from datetime import datetime
 from recordclass import recordclass
+from functools import wraps
 
-from functions import build_table, write_info, write_help
+from functions import build_table, write_info, write_help, json_dump, json_load
 
 from loot_data import MC_BOSS_LOOT
-from config import AUTHORIZED_CHANNELS, ADMIN_ROLE, PREFIX, MC_BOSS_NAMES
+from config import AUTHORIZED_CHANNELS, ADMIN_ROLE, PREFIX, MC_BOSS_NAMES, SAVE_FILEPATH
 from settings import token
 from open_search.open_search import OpenSearch, OpenSearchError, SearchObjectError
 
@@ -48,6 +49,19 @@ lock_flag = True        # bool (true when locked, false when unlocked)
 
 # Prevent spam --> PM if less than an hour in channel
 last_help = None   # last help message sent in channel
+
+
+def save_state(func):
+    """
+    Decorator to dump the contents of PRIORITY_TABLE after every modifications
+    """
+    @wraps(func)
+    async def decorated(*args, **kwargs):
+        await func(*args, **kwargs)
+        to_save = [PRIORITY_TABLE, lock_flag]
+        with open(SAVE_FILEPATH, "w") as f:
+            json_dump(to_save, f)
+    return decorated
 
 
 @bot.event
@@ -109,6 +123,7 @@ async def help(ctx):
 
 
 @bot.command()
+@save_state
 async def request(ctx, *args):
     # parse message for <name>/<class>/<item>
     # (one word for name and class right now)
@@ -158,9 +173,9 @@ async def request(ctx, *args):
     user = ctx.author
     await ctx.send(
         (
-            "Confirmed! Noting down {} for {}. "
+            "Confirmed! Noting down [{}] for {}. "
             "Check your DMs for the item's tooltip just to be sure!"
-        ).format(item.name, name)
+        ).format(item.name, name.title())
     )
 
     dm = user.dm_channel
@@ -215,6 +230,7 @@ async def newraid(ctx):
 
 @bot.command()
 @has_role(ADMIN_ROLE)
+@save_state
 async def lock(ctx):
     # raise flag for no more soft reserves
     global lock_flag
@@ -224,6 +240,7 @@ async def lock(ctx):
 
 @bot.command()
 @has_role(ADMIN_ROLE)
+@save_state
 async def unlock(ctx):
     # lower flag for more soft reserves
     global lock_flag
@@ -295,6 +312,7 @@ async def boss(ctx, *args):
 
 @bot.command()
 @has_role(ADMIN_ROLE)
+@save_state
 async def itemwin(ctx, character_name):
     try:
         PRIORITY_TABLE[character_name.casefold()].received_item = True
@@ -351,11 +369,18 @@ async def winners(ctx):
 #     for table in table_list:
 #         await ctx.send(table)
 
+if __name__ == "__main__":
+    try:
+        with open(SAVE_FILEPATH, "r") as f:
+            previous_table, previous_lock_flag = json_load(f)
+            PRIORITY_TABLE = {k: Request(**v) for k, v in previous_table.items()}
+            lock_flag = previous_lock_flag
+    except FileNotFoundError:
+        print("No previous save file found")
 
-try:
-    bot.run(token)
-
-except RuntimeError:
-    print("Exiting messily.")
-except Exception as e:
-    print(e)
+    try:
+        bot.run(token)
+    except RuntimeError:
+        print("Exiting messily.")
+    except Exception as e:
+        print(e)

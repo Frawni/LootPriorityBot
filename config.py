@@ -11,3 +11,5 @@ HEADERS = ["Name", "Role", "Class", "Item Requested",
 MC_BOSS_NAMES = ["lucifron", "magmadar", "gehennas", "garr",
                  "shazzrah", "baron geddon", "golemagg the incinerator",
                  "sulfuron harbringer", "majordomo executus", "ragnaros"]
+
+SAVE_FILEPATH = "current_raid.exe"

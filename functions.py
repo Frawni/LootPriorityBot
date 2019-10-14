@@ -1,6 +1,7 @@
 import discord
+import json
 from tabulate import tabulate
-from functools import wraps
+from datetime import datetime
 
 from info import AUTHOR, SOURCE, INVITE
 from config import HEADERS
@@ -124,3 +125,36 @@ def write_help_pleb():
         inline=False
     )
     return embed_pleb
+
+
+def json_load(fp):
+    """
+    Custom json.load that automatically converts isoformat strings to their corresponding datetime object
+    """
+    def json_datetime_deserializer(pairs):
+        res = {}
+        for k, v in pairs:
+            if isinstance(v, str):
+                try:
+                    res[k] = datetime.fromisoformat(v)
+                except ValueError:
+                    res[k] = v
+            else:
+                res[k] = v
+        return res
+
+    return json.load(fp, object_pairs_hook=json_datetime_deserializer)
+
+
+def json_dump(obj, fp):
+    """
+    Custom json.dump that automatically converts datetime objects to isoformat strings and the else
+        catches the Request recordclass
+    """
+    def json_datetime_serializer(obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        else:
+            return obj._asdict()
+
+    return json.dump(obj, default=json_datetime_serializer, fp=fp)
