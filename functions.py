@@ -1,11 +1,12 @@
 import discord
 from tabulate import tabulate
+from functools import wraps
 
 from info import AUTHOR, SOURCE, INVITE
 from config import HEADERS
 
 
-def build_table(DICTIONARY, sort_by="item"):
+def build_table(DICTIONARY, sort_by=""):
     table = []
     table_list = []
 
@@ -18,15 +19,15 @@ def build_table(DICTIONARY, sort_by="item"):
         table.append(row)
 
     index = HEADERS.index("Item Requested")
-    for header in HEADERS:
-        if header.casefold().startswith(sort_by):
-            index = HEADERS.index(header)
-            break
-    try:
-        ordered_table = sorted(table, key=lambda x: x[index])
-    except NameError:
-        table_list.append("I'm not sure how you want me to sort this, so here are the requests by items. :grin:")
-        # not sure why this message isn't popping up - too sleepy to solve atm
+    if sort_by != "":
+        for header in HEADERS:
+            if sort_by.casefold() in header.casefold():
+                index = HEADERS.index(header)
+                break
+        else:
+            table_list.append("I'm not sure how you want me to sort this, so here are the requests by items. :grin:")
+
+    ordered_table = sorted(table, key=lambda x: x[index])
 
     row_count = len(ordered_table)
     separator = 12

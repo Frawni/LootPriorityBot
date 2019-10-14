@@ -191,10 +191,10 @@ async def show(ctx, *message):
 
         await ctx.send("Sliding into your DMs :wink:")
 
+        sort_by = ""
         if message:
-            table_list = build_table(PRIORITY_TABLE, " ".join(message))
-        else:
-            table_list = build_table(PRIORITY_TABLE)
+            sort_by = " ".join(message)
+        table_list = build_table(PRIORITY_TABLE, sort_by)
         for table in table_list:
             await dm_channel.send(table)
 
@@ -236,10 +236,10 @@ async def unlock(ctx):
 async def showall(ctx, *message):
     # print table of requests in channel
     if PRIORITY_TABLE != {}:
+        sort_by = ""
         if message:
-            table_list = build_table(PRIORITY_TABLE, " ".join(message))
-        else:
-            table_list = build_table(PRIORITY_TABLE)
+            sort_by = " ".join(message)
+        table_list = build_table(PRIORITY_TABLE, sort_by)
         for table in table_list:
             await ctx.send(table)
     else:
@@ -249,26 +249,41 @@ async def showall(ctx, *message):
 @bot.command()
 @has_role(ADMIN_ROLE)
 async def boss(ctx, *args):
-    input = " ".join(args)
-    # try:
-    #     POTENTIAL_LOOT = MC_BOSS_LOOT[input.casefold()]
-    # except KeyError:
-    found = False
-    for name in MC_BOSS_NAMES:
-        if name.startswith(input.casefold()):
-            boss_name = name
-            POTENTIAL_LOOT = MC_BOSS_LOOT[boss_name]
-            found = True
-    if not found:
-        try:
-            boss_name = MC_BOSS_NAMES[int(input) - 1]
-            POTENTIAL_LOOT = MC_BOSS_LOOT[boss_name]
-            found = True
-        except ValueError:
-            await ctx.send("I don't know this boss, sorry!")
+    # 1 or majordomo executus
+    input = args
+    if not len(input):
+        await ctx.send("Wtf mate gimme somen to work with here")
+        return
+
+    potential_loot = None
+    boss_name = None
+    if input[0].isdigit():
+        # Boss identified by his number
+        boss_number = int(input[0]) - 1
+        if boss_number not in range(len(MC_BOSS_NAMES)):
+            await ctx.send("Not a real number.")
+            return
+        else:
+            boss_name = MC_BOSS_NAMES[boss_number]
+            potential_loot = MC_BOSS_LOOT[boss_name]
+    else:
+        # Boss identified by name
+        input = " ".join(args)
+        for name in MC_BOSS_NAMES:
+            if input.casefold() in name:
+                boss_name = name
+                potential_loot = MC_BOSS_LOOT[boss_name]
+                break
+        else:
+            await ctx.send("No boss with that name found")
+            return
+
+    assert boss_name is not None
+    assert potential_loot is not None
+
     RELEVANT_TABLE = {}
-    for item_num in POTENTIAL_LOOT.keys():
-        item_name = POTENTIAL_LOOT[item_num]
+    for item_num in potential_loot.keys():
+        item_name = potential_loot[item_num]
         for character_name in PRIORITY_TABLE.keys():
             if PRIORITY_TABLE[character_name].item.casefold() == item_name.casefold():
                 RELEVANT_TABLE[character_name] = PRIORITY_TABLE[character_name]
@@ -296,7 +311,7 @@ async def winners(ctx):
         for key in PRIORITY_TABLE.keys():
             if PRIORITY_TABLE[key].received_item:
                 WINNERS[key] = PRIORITY_TABLE[key]
-        table_list = build_table(WINNERS)
+        table_list = build_table(WINNERS, sort_by="name")
         for table in table_list:
             await ctx.send(table)
 
