@@ -35,11 +35,8 @@ from functools import wraps
 from functions import build_table, write_info, write_help, json_dump, json_load
 
 from loot_data import MC_BOSS_LOOT
-from config import (
-    AUTHORIZED_CHANNELS, ADMIN_ROLE, PREFIX, MC_BOSS_NAMES,
-    SAVE_FILEPATH, PREVIOUS_SAVE_FILEPATH
-)
-from settings import token
+from config import AUTHORIZED_CHANNELS, ADMIN_ROLE, PREFIX, MC_BOSS_NAMES
+from settings import token, SAVE_FILEPATH, PREVIOUS_SAVE_FILEPATH
 from open_search.open_search import OpenSearch, OpenSearchError, SearchObjectError
 
 # GLOBAL VARIABLES

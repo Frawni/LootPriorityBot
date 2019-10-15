@@ -1,6 +1,6 @@
 PREFIX = "!"
 
-ADMIN_ROLE = "tourist"
+ADMIN_ROLE = "Officer"
 
 AUTHORIZED_CHANNELS = ["mc-reserve-list", ]
 
@@ -11,6 +11,3 @@ HEADERS = ["Name", "Role", "Class", "Item Requested",
 MC_BOSS_NAMES = ["lucifron", "magmadar", "gehennas", "garr",
                  "shazzrah", "baron geddon", "golemagg the incinerator",
                  "sulfuron harbringer", "majordomo executus", "ragnaros"]
-
-SAVE_FILEPATH = "current_raid.exe"
-PREVIOUS_SAVE_FILEPATH = "previous_raid.exe"
