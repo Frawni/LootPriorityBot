@@ -27,6 +27,7 @@ FEATURES
 
 import discord
 import os
+import logging
 from discord.ext.commands import Bot, has_role
 from datetime import datetime
 from recordclass import recordclass
@@ -39,6 +40,7 @@ from config import AUTHORIZED_CHANNELS, ADMIN_ROLE, PREFIX, MC_BOSS_NAMES
 from settings import token, SAVE_FILEPATH, PREVIOUS_SAVE_FILEPATH
 from open_search.open_search import OpenSearch, OpenSearchError, SearchObjectError
 
+logger = logging.getLogger(__name__)
 # GLOBAL VARIABLES
 bot = Bot(command_prefix=PREFIX)
 bot.remove_command("help")
@@ -66,7 +68,7 @@ def save_state(func):
 
 @bot.event
 async def on_ready():
-    print("Successfully logged in as {}".format(bot.user.name))
+    logger.info("Successfully logged in as {}".format(bot.user.name))
 
 
 @bot.event
@@ -145,7 +147,7 @@ async def request(ctx, *args):
     try:
         search = OpenSearch('item', item)
     except OpenSearchError as e:
-        print(e)
+        logger.info(e)
         await ctx.send("Could not find any matching items. Try again.")
         return
 
@@ -186,7 +188,7 @@ async def request(ctx, *args):
     try:
         item.get_tooltip_data()
     except SearchObjectError as e:
-        print(e)
+        logger.info(e)
         await dm.send("Sorry! Something went wrong with the tooltip generation.")
     else:
         await dm.send(file=discord.File(item.image))
@@ -352,7 +354,7 @@ async def winners(ctx):
 #             try:
 #                 search = OpenSearch('item', item)
 #             except OpenSearchError as e:
-#                 print(e)
+#                 logger.info(e)
 #                 await ctx.send("Could not find any matching items. Try again.")
 #                 return
 #
@@ -379,17 +381,27 @@ async def winners(ctx):
 #         await ctx.send(table)
 
 if __name__ == "__main__":
+    logging.basicConfig(
+        filename="{}/lootbot.log".format(os.path.dirname(os.path.abspath(__file__))),
+        level=logging.DEBUG,
+        filemode='a',
+        format="%(levelname)s:%(name)s:[%(asctime)s] %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S"
+    )
+    logging.info(" ")
+    logging.info("-" * 50)
+    logging.info(" ")
     try:
         with open(SAVE_FILEPATH, "r") as f:
             previous_table, previous_lock_flag = json_load(f)
             PRIORITY_TABLE = {k: Request(**v) for k, v in previous_table.items()}
             lock_flag = previous_lock_flag
     except FileNotFoundError:
-        print("No previous save file found")
+        logger.info("No previous save file found")
 
     try:
         bot.run(token)
     except RuntimeError:
-        print("Exiting messily.")
+        logger.info("Exiting messily.")
     except Exception as e:
-        print(e)
+        logger.info(e)
