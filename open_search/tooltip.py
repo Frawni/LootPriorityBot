@@ -4,7 +4,6 @@ Copied from https://github.com/mikeStr8s/ClassicBot
 
 
 import textwrap
-import uuid
 from io import BytesIO
 
 import requests
@@ -18,12 +17,12 @@ def build_tooltip(lines, icon_name):
     icon = get_icon(icon_name)
     container = get_image_container(icon.size, len(lines), max_length)
     container.paste(icon)
+    icon.close()
     tt_container = get_tooltip_container(max_length, len(lines))
     add_tooltip_text(tt_container, lines, max_length)
     container.paste(tt_container, (icon.size[0], 0))
-    img_id = str(uuid.uuid4()) + '.png'
-    container.save(img_id)
-    return img_id
+    tt_container.close()
+    return container
 
 
 def add_tooltip_text(container, lines, max_length):

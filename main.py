@@ -22,16 +22,24 @@ FEATURES
 - !count --> return number of people that have made a request
 - !roll --> cause deep down, I'm a troll
 - wow add-on to remove going through discord when raiding (MEGA feature, obviously)
+
+deathcount per raid - timer based timeout
+stricter enforcement on parsing
+multiple channel separation
+file history
+loading previous raids
+convert globals to class + serialization
 """
 
 
 import discord
-import os
 import logging
 from discord.ext.commands import Bot, has_role
 from datetime import datetime
 from recordclass import recordclass
 from functools import wraps
+from io import BytesIO
+from os import path, remove
 
 from functions import build_table, write_info, write_help, json_dump, json_load
 
@@ -39,6 +47,9 @@ from loot_data import MC_BOSS_LOOT
 from config import AUTHORIZED_CHANNELS, ADMIN_ROLE, PREFIX, MC_BOSS_NAMES
 from settings import token, SAVE_FILEPATH, PREVIOUS_SAVE_FILEPATH
 from open_search.open_search import OpenSearch, OpenSearchError, SearchObjectError
+
+ABSOLUTE_SAVE_FILEPATH = path.join(path.dirname(path.abspath(__file__)), SAVE_FILEPATH)
+ABSOLUTE_PREVIOUS_SAVE_FILEPATH = path.join(path.dirname(path.abspath(__file__)), PREVIOUS_SAVE_FILEPATH)
 
 logger = logging.getLogger(__name__)
 # GLOBAL VARIABLES
@@ -61,7 +72,7 @@ def save_state(func):
     async def decorated(*args, **kwargs):
         await func(*args, **kwargs)
         to_save = [PRIORITY_TABLE, lock_flag]
-        with open(SAVE_FILEPATH, "w") as f:
+        with open(ABSOLUTE_SAVE_FILEPATH, "w") as f:
             json_dump(to_save, f)
     return decorated
 
@@ -179,7 +190,6 @@ async def request(ctx, *args):
             "Check your DMs for the item's tooltip just to be sure!"
         ).format(item.name, name.title())
     )
-
     dm = user.dm_channel
     if dm is None:
         await user.create_dm()
@@ -187,12 +197,14 @@ async def request(ctx, *args):
 
     try:
         item.get_tooltip_data()
-    except SearchObjectError as e:
-        logger.info(e)
+    except SearchObjectError:
+        logger.exception("Failed to get tooltip data")
         await dm.send("Sorry! Something went wrong with the tooltip generation.")
     else:
-        await dm.send(file=discord.File(item.image))
-        os.remove(item.image)
+        with BytesIO() as image_file:
+            item.image.save(image_file, format="png")
+            image_file.seek(0)
+            await dm.send(file=discord.File(image_file, filename="reserved.png"))
 
 
 @bot.command()
@@ -226,10 +238,10 @@ async def newraid(ctx):
     global PRIORITY_TABLE, lock_flag
 
     to_save = [PRIORITY_TABLE, lock_flag]
-    with open(PREVIOUS_SAVE_FILEPATH, "w") as f:
+    with open(ABSOLUTE_PREVIOUS_SAVE_FILEPATH, "w") as f:
         json_dump(to_save, f)
     try:
-        os.remove(SAVE_FILEPATH)
+        remove(ABSOLUTE_SAVE_FILEPATH)
     except FileNotFoundError:
         pass
 
@@ -382,7 +394,7 @@ async def winners(ctx):
 
 if __name__ == "__main__":
     logging.basicConfig(
-        filename="{}/lootbot.log".format(os.path.dirname(os.path.abspath(__file__))),
+        filename="{}/lootbot.log".format(path.dirname(path.abspath(__file__))),
         level=logging.DEBUG,
         filemode='a',
         format="%(levelname)s:%(name)s:[%(asctime)s] %(message)s",
@@ -392,7 +404,7 @@ if __name__ == "__main__":
     logging.info("-" * 50)
     logging.info(" ")
     try:
-        with open(SAVE_FILEPATH, "r") as f:
+        with open(ABSOLUTE_SAVE_FILEPATH, "r") as f:
             previous_table, previous_lock_flag = json_load(f)
             PRIORITY_TABLE = {k: Request(**v) for k, v in previous_table.items()}
             lock_flag = previous_lock_flag
