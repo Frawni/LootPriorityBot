@@ -10,6 +10,8 @@ POTENTIAL EXCEPTIONS (to be dealt with)
 - MissingRole (ll 148, 175, 184, 209, 222)
 
 FEATURES
+- manage channels
+- status -> info of raid/number of people that reserved, also by role
 - set admin role on bot invite (+ allow more than one role?)
 - deal with second channel, different commands
 - search function for tooltip/through table
@@ -28,58 +30,36 @@ stricter enforcement on parsing
 multiple channel separation
 file history
 loading previous raids
-convert globals to class + serialization
 """
 
 
 import discord
 import logging
-from discord.ext.commands import Bot, has_role
+from discord.ext.commands import Bot, has_role, CommandNotFound
 from datetime import datetime
-from recordclass import recordclass
-from functools import wraps
 from io import BytesIO
-from os import path, remove
+from os import path
 
-from functions import build_table, write_info, write_help, json_dump, json_load
+from utils import build_table, write_info, write_help
 
 from loot_data import MC_BOSS_LOOT
-from config import AUTHORIZED_CHANNELS, ADMIN_ROLE, PREFIX, MC_BOSS_NAMES
-from settings import token, SAVE_FILEPATH, PREVIOUS_SAVE_FILEPATH
+from config import AUTHORIZED_CHANNELS, ADMIN_ROLE, PREFIX, MC_BOSS_NAMES, WOW_ROLES, WOW_CLASSES
+from settings import token
 from open_search.open_search import OpenSearch, OpenSearchError, SearchObjectError
-
-ABSOLUTE_SAVE_FILEPATH = path.join(path.dirname(path.abspath(__file__)), SAVE_FILEPATH)
-ABSOLUTE_PREVIOUS_SAVE_FILEPATH = path.join(path.dirname(path.abspath(__file__)), PREVIOUS_SAVE_FILEPATH)
+from globals import GlobalState, Request
+from decorators import save_state
 
 logger = logging.getLogger(__name__)
-# GLOBAL VARIABLES
+
 bot = Bot(command_prefix=PREFIX)
 bot.remove_command("help")
-
-PRIORITY_TABLE = {}      # "<name>": Request recordclass
-Request = recordclass("Request", ["role", "wow_class", "item", "datetime", "received_item"])
-lock_flag = True        # bool (true when locked, false when unlocked)
-
-# Prevent spam --> PM if less than an hour in channel
-last_help = None   # last help message sent in channel
-
-
-def save_state(func):
-    """
-    Decorator to dump the contents of PRIORITY_TABLE after every modifications
-    """
-    @wraps(func)
-    async def decorated(*args, **kwargs):
-        await func(*args, **kwargs)
-        to_save = [PRIORITY_TABLE, lock_flag]
-        with open(ABSOLUTE_SAVE_FILEPATH, "w") as f:
-            json_dump(to_save, f)
-    return decorated
 
 
 @bot.event
 async def on_ready():
     logger.info("Successfully logged in as {}".format(bot.user.name))
+    for channel in bot.get_all_channels():
+        print(channel.name)
 
 
 @bot.event
@@ -88,7 +68,19 @@ async def on_message(message):
     if channel.type == discord.ChannelType.private:
         return
     elif channel.name in AUTHORIZED_CHANNELS:
-        await bot.process_commands(message)      # maybe deal with CommandNotFound? but so far doesn't break, just prints in terminal
+        await bot.process_commands(message)
+
+
+@bot.event
+async def on_command_error(context, exception):
+    if isinstance(exception, CommandNotFound):
+        logger.warning("Unrecognized command: |{}|".format(context.message.content))
+        await context.channel.send("I do not recognize that command.")
+    else:
+        logger.error(
+            'Exception in command {}:'.format(context.command),
+            exc_info=(type(exception), exception, exception.__traceback__)
+        )
 
 
 # BASIC COMMANDS
@@ -104,18 +96,18 @@ async def info(ctx):
 
 
 @bot.command()
+@save_state
 async def help(ctx):
-    # spam filter of 1 hour
-    global last_help
-
+    state = GlobalState()
     # get pleb and admin help messages
     embed_tuple = write_help()
     channel = ctx
     change = True
 
-    if last_help is not None:
-        delta = datetime.utcnow() - last_help
+    if state.last_help is not None:
+        delta = datetime.utcnow() - state.last_help
 
+        # spam filter of 1 hour
         if delta.days == 0 and delta.seconds < 3600:
             # get user private message channel, or create if doesn't exist
             user = ctx.author
@@ -129,7 +121,7 @@ async def help(ctx):
             await ctx.send("Sliding into your DMs, we don't want to spam, now. :kissing_heart:")
 
     if change:
-        last_help = datetime.utcnow()
+        state.last_help = datetime.utcnow()
 
     await channel.send(embed=embed_tuple[0])
     await channel.send(embed=embed_tuple[1])
@@ -137,24 +129,59 @@ async def help(ctx):
 
 @bot.command()
 @save_state
-async def request(ctx, *args):
+async def request(ctx, *message):
+    state = GlobalState()
     # parse message for <name>/<class>/<item>
     # (one word for name and class right now)
     # and add/replace (if same name) to table
-    if lock_flag:
-        reply = "Raid priority is locked. Sorry!"
-        await ctx.send(reply)
+    if state.created is None:
+        await ctx.send("There is no raid currently being tracked. Ask an officer to create one.")
+        return
+
+    if state.lock_flag:
+        await ctx.send("Raid loot reservation is currently locked. Sorry!")
         return
 
     # cause it separate by space in message retrieval
     # cause it dumb.
-    request = " ".join(list(args))
-    name, role, wow_class, item = [info.strip().casefold() for info in request.split("/")]
+    request = " ".join(list(message))
     if request.count("/") != 3:
         reply = "Um, maybe use **!help** first, love. It looks like you forgot something.:thinking:"
         await ctx.send(reply)
         return
 
+    name, role, wow_class, item = [info.strip().casefold() for info in request.split("/")]
+    if min(len(role), len(wow_class), len(item)) < 3:
+        await ctx.send("Sorry but you must enter at least 3 letters to identify your role, class and item")
+        return
+
+    for existing_role in WOW_ROLES:
+        if existing_role.startswith(role):
+            role = existing_role
+            break
+    else:
+        await ctx.send(
+            (
+                "Sorry, couldnt understand your declared role.\n"
+                "Format is: `!request <name>/<role>/<class>/<item>`\n"
+                "Your role choices are: {}"
+            ).format(" | ".join(WOW_ROLES))
+        )
+        return
+
+    for existing_class in WOW_CLASSES:
+        if existing_class.startswith(wow_class):
+            wow_class = existing_class
+            break
+    else:
+        await ctx.send(
+            (
+                "Sorry, couldnt understand your declared class.\n"
+                "Format is: `!request <name>/<role>/<class>/<item>`\n"
+                "Your classes choices are: {}"
+            ).format(" | ".join(WOW_CLASSES))
+        )
+        return
     try:
         search = OpenSearch('item', item)
     except OpenSearchError as e:
@@ -179,7 +206,7 @@ async def request(ctx, *args):
         await ctx.send("Found some items but none matched the droptable from bosses for this raid. Try again.")
         return
 
-    PRIORITY_TABLE[name] = Request(
+    state.priority_table[name] = Request(
         role=role, wow_class=wow_class, item=item.name,
         datetime=datetime.utcnow(), received_item=False
     )
@@ -209,8 +236,9 @@ async def request(ctx, *args):
 
 @bot.command()
 async def show(ctx, *message):
+    state = GlobalState()
     # print table of requests in private message
-    if PRIORITY_TABLE != {}:
+    if state.priority_table != {}:
         # get user private message channel, or create if doesn't exist
         user = ctx.author
         dm_channel = user.dm_channel
@@ -223,7 +251,7 @@ async def show(ctx, *message):
         sort_by = ""
         if message:
             sort_by = " ".join(message)
-        table_list = build_table(PRIORITY_TABLE, sort_by)
+        table_list = build_table(state.priority_table, sort_by)
         for table in table_list:
             await dm_channel.send(table)
 
@@ -234,21 +262,12 @@ async def show(ctx, *message):
 # ADMIN COMMANDS
 @bot.command()
 @has_role(ADMIN_ROLE)
-async def newraid(ctx):
-    global PRIORITY_TABLE, lock_flag
-
-    to_save = [PRIORITY_TABLE, lock_flag]
-    with open(ABSOLUTE_PREVIOUS_SAVE_FILEPATH, "w") as f:
-        json_dump(to_save, f)
-    try:
-        remove(ABSOLUTE_SAVE_FILEPATH)
-    except FileNotFoundError:
-        pass
-
+@save_state
+async def newraid(ctx, *message):
     # initialize priority table and unlock soft reserves
-    PRIORITY_TABLE = {}
-    lock_flag = False
-    await ctx.send("Raid priority is now open!")
+    message = " ".join(message)
+    GlobalState().newraid(info=message)
+    await ctx.send("New raid loot reserves now open!")
 
 
 @bot.command()
@@ -256,8 +275,7 @@ async def newraid(ctx):
 @save_state
 async def lock(ctx):
     # raise flag for no more soft reserves
-    global lock_flag
-    lock_flag = True
+    GlobalState().lock_flag = True
     await ctx.send("Raid priority is now locked!")
 
 
@@ -266,8 +284,7 @@ async def lock(ctx):
 @save_state
 async def unlock(ctx):
     # lower flag for more soft reserves
-    global lock_flag
-    lock_flag = False
+    GlobalState().lock_flag = False
     await ctx.send("Raid priority is open once more!")
 
 
@@ -275,11 +292,12 @@ async def unlock(ctx):
 @has_role(ADMIN_ROLE)
 async def showall(ctx, *message):
     # print table of requests in channel
-    if PRIORITY_TABLE != {}:
+    state = GlobalState()
+    if state.priority_table != {}:
         sort_by = ""
         if message:
             sort_by = " ".join(message)
-        table_list = build_table(PRIORITY_TABLE, sort_by)
+        table_list = build_table(state.priority_table, sort_by)
         for table in table_list:
             await ctx.send(table)
     else:
@@ -288,9 +306,9 @@ async def showall(ctx, *message):
 
 @bot.command()
 @has_role(ADMIN_ROLE)
-async def boss(ctx, *args):
+async def boss(ctx, *message):
     # 1 or majordomo executus
-    input = args
+    input = message
     if not len(input):
         await ctx.send("Wtf mate gimme somen to work with here")
         return
@@ -308,7 +326,7 @@ async def boss(ctx, *args):
             potential_loot = MC_BOSS_LOOT[boss_name]
     else:
         # Boss identified by name
-        input = " ".join(args)
+        input = " ".join(message)
         for name in MC_BOSS_NAMES:
             if input.casefold() in name:
                 boss_name = name
@@ -321,12 +339,13 @@ async def boss(ctx, *args):
     assert boss_name is not None
     assert potential_loot is not None
 
+    state = GlobalState()
     RELEVANT_TABLE = {}
     for item_num in potential_loot.keys():
         item_name = potential_loot[item_num]
-        for character_name in PRIORITY_TABLE.keys():
-            if PRIORITY_TABLE[character_name].item.casefold() == item_name.casefold():
-                RELEVANT_TABLE[character_name] = PRIORITY_TABLE[character_name]
+        for character_name in state.priority_table.keys():
+            if state.priority_table[character_name].item.casefold() == item_name.casefold():
+                RELEVANT_TABLE[character_name] = state.priority_table[character_name]
     table_list = build_table(RELEVANT_TABLE)
     await ctx.send("**" + boss_name + "**")
     for table in table_list:
@@ -337,8 +356,9 @@ async def boss(ctx, *args):
 @has_role(ADMIN_ROLE)
 @save_state
 async def itemwin(ctx, character_name):
+    state = GlobalState
     try:
-        PRIORITY_TABLE[character_name.casefold()].received_item = True
+        state.priority_table[character_name.casefold()].received_item = True
         await ctx.send("Congrats, {}!".format(character_name))
     except KeyError:
         await ctx.send("This name isn't in my list. :frowning:")
@@ -347,15 +367,20 @@ async def itemwin(ctx, character_name):
 @bot.command()
 @has_role(ADMIN_ROLE)
 async def winners(ctx):
-    if PRIORITY_TABLE != {}:
+    state = GlobalState()
+    if state.priority_table != {}:
         WINNERS = {}
-        for key in PRIORITY_TABLE.keys():
-            if PRIORITY_TABLE[key].received_item:
-                WINNERS[key] = PRIORITY_TABLE[key]
+        for player_name, request in state.priority_table.keys():
+            if request.received_item:
+                WINNERS[player_name] = state.priority_table[player_name]
         table_list = build_table(WINNERS, sort_by="name")
         for table in table_list:
             await ctx.send(table)
 
+
+@bot.command()
+async def status(ctx):
+    pass
 
 # # QUICK AND DIRTY AUTOMATION OF TEXT CAUSE I CAN'T SEEM TO BE ABLE TO READ OTHER BOT MESSAGES
 # @bot.command()
@@ -395,21 +420,20 @@ async def winners(ctx):
 if __name__ == "__main__":
     logging.basicConfig(
         filename="{}/lootbot.log".format(path.dirname(path.abspath(__file__))),
-        level=logging.DEBUG,
-        filemode='a',
+        level=logging.INFO,
+        filemode='w',
         format="%(levelname)s:%(name)s:[%(asctime)s] %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S"
     )
+    # logging.getLogger("discord").setLevel(logging.WARNING)
+    # logging.getLogger("websockets").setLevel(logging.WARNING)
+    # logging.getLogger("urllib3").setLevel(logging.WARNING)
+    # logging.getLogger("PIL").setLevel(logging.WARNING)
     logging.info(" ")
     logging.info("-" * 50)
     logging.info(" ")
-    try:
-        with open(ABSOLUTE_SAVE_FILEPATH, "r") as f:
-            previous_table, previous_lock_flag = json_load(f)
-            PRIORITY_TABLE = {k: Request(**v) for k, v in previous_table.items()}
-            lock_flag = previous_lock_flag
-    except FileNotFoundError:
-        logger.info("No previous save file found")
+
+    GlobalState().load_current_saved_state()
 
     try:
         bot.run(token)

@@ -1,8 +1,8 @@
 token = "rho sucks at using filters"
 channel_name = "general"
 
-SAVE_FILEPATH = "current_raid.exe"
-PREVIOUS_SAVE_FILEPATH = "previous_raid.exe"
+SAVE_FILENAME = "current_raid.exe"
+PREVIOUS_SAVE_FILENAME = "previous_raid.exe"
 
 
 try:

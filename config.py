@@ -11,3 +11,20 @@ HEADERS = ["Name", "Role", "Class", "Item Requested",
 MC_BOSS_NAMES = ["lucifron", "magmadar", "gehennas", "garr",
                  "shazzrah", "baron geddon", "golemagg the incinerator",
                  "sulfuron harbringer", "majordomo executus", "ragnaros"]
+
+WOW_CLASSES = [
+    "druid",
+    "hunter",
+    "mage",
+    "paladin",
+    "priest",
+    "rogue",
+    "warlock",
+    "warrior",
+]
+
+WOW_ROLES = [
+    "tank",
+    "healer",
+    "dps"
+]

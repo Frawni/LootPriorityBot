@@ -1,7 +1,5 @@
 import discord
-import json
 from tabulate import tabulate
-from datetime import datetime
 
 from info import AUTHOR, SOURCE, INVITE
 from config import HEADERS
@@ -12,11 +10,11 @@ def build_table(DICTIONARY, sort_by=""):
     table_list = []
 
     for key in DICTIONARY.keys():
-        request = DICTIONARY[key]
+        request = DICTIONARY[key].as_presentable()
         time = request.datetime
         time_str = "{:02d}:{:02d}:{:02d}".format(time.hour, time.minute, time.second)
         item_received = "{}".format("Yes" if request.received_item else "No")
-        row = [key, request.role, request.wow_class, request.item, ] + [time_str, item_received, ]
+        row = [key.title(), request.role, request.wow_class, request.item] + [time_str, item_received]
         table.append(row)
 
     index = HEADERS.index("Item Requested")
@@ -105,7 +103,7 @@ def write_help_pleb():
         description="A list of basic commands:"
     )
     embed_pleb.add_field(
-        name="!request <character name>/<role>/<class>/<item>",
+        name="!request <character name>/<role> (tank|healer|dps)/<class>/<item>",
         value="Request priority on an item for the upcoming raid\nIf your name is already on the list, it will replace the previous item",
         inline=False
     )
@@ -125,36 +123,3 @@ def write_help_pleb():
         inline=False
     )
     return embed_pleb
-
-
-def json_load(fp):
-    """
-    Custom json.load that automatically converts isoformat strings to their corresponding datetime object
-    """
-    def json_datetime_deserializer(pairs):
-        res = {}
-        for k, v in pairs:
-            if isinstance(v, str):
-                try:
-                    res[k] = datetime.fromisoformat(v)
-                except ValueError:
-                    res[k] = v
-            else:
-                res[k] = v
-        return res
-
-    return json.load(fp, object_pairs_hook=json_datetime_deserializer)
-
-
-def json_dump(obj, fp):
-    """
-    Custom json.dump that automatically converts datetime objects to isoformat strings and the else
-        catches the Request recordclass
-    """
-    def json_datetime_serializer(obj):
-        if isinstance(obj, datetime):
-            return obj.isoformat()
-        else:
-            return obj._asdict()
-
-    return json.dump(obj, default=json_datetime_serializer, fp=fp)
