@@ -43,8 +43,10 @@ from os import path
 from utils import build_table, write_info, write_help
 
 from loot_data import MC_BOSS_LOOT
-from config import AUTHORIZED_CHANNELS, ADMIN_ROLE, PREFIX, MC_BOSS_NAMES, WOW_ROLES, WOW_CLASSES
-from settings import token
+from settings import (
+    DISCORD_TOKEN, AUTHORIZED_CHANNELS, ADMIN_ROLE, PREFIX,
+    MC_BOSS_NAMES, WOW_ROLES, WOW_CLASSES
+)
 from open_search.open_search import OpenSearch, OpenSearchError, SearchObjectError
 from globals import GlobalState, Request
 from decorators import save_state
@@ -436,7 +438,7 @@ if __name__ == "__main__":
     GlobalState().load_current_saved_state()
 
     try:
-        bot.run(token)
+        bot.run(DISCORD_TOKEN)
     except RuntimeError:
         logger.info("Exiting messily.")
     except Exception as e:

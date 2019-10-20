@@ -2,7 +2,7 @@ import discord
 from tabulate import tabulate
 
 from info import AUTHOR, SOURCE, INVITE
-from config import HEADERS
+from settings import HEADERS
 
 
 def build_table(DICTIONARY, sort_by=""):
