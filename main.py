@@ -45,6 +45,7 @@ from utils import build_table, write_info, write_help
 from loot_data import MC_BOSS_LOOT
 from settings import (
     DISCORD_TOKEN, AUTHORIZED_CHANNELS, ADMIN_ROLE, PREFIX,
+    INFO_CHANNEL_NAME, REQUEST_CHANNEL_NAME, DISCUSSION_CHANNEL_NAME,
     MC_BOSS_NAMES, WOW_ROLES, WOW_CLASSES
 )
 from open_search.open_search import OpenSearch, OpenSearchError, SearchObjectError
@@ -76,11 +77,11 @@ async def on_message(message):
 @bot.event
 async def on_command_error(context, exception):
     if isinstance(exception, CommandNotFound):
-        logger.warning("Unrecognized command: |{}|".format(context.message.content))
+        logger.warning(f"Unrecognized command: |{context.message.content}|")
         await context.channel.send("I do not recognize that command.")
     else:
         logger.error(
-            'Exception in command {}:'.format(context.command),
+            f"Exception in command {context.command}:",
             exc_info=(type(exception), exception, exception.__traceback__)
         )
 
@@ -144,17 +145,35 @@ async def request(ctx, *message):
         await ctx.send("Raid loot reservation is currently locked. Sorry!")
         return
 
-    # cause it separate by space in message retrieval
-    # cause it dumb.
+    user = ctx.author
+    user_dm = user.dm_channel
+    user_message = ctx.message
+    if user_dm is None:
+        await user.create_dm()
+        user_dm = user.dm_channel
+
     request = " ".join(list(message))
     if request.count("/") != 3:
-        reply = "Um, maybe use **!help** first, love. It looks like you forgot something.:thinking:"
-        await ctx.send(reply)
+        await user_dm.send(
+            (
+                f"You sent: `{user_message.content}`\n\n"
+                "Um, maybe use **!help** first, love. It looks like you forgot something.:thinking:"
+                f"\nFix your command and message me again in the `{REQUEST_CHANNEL_NAME}` channel!"
+            )
+        )
+        await user_message.delete()
         return
 
     name, role, wow_class, item = [info.strip().casefold() for info in request.split("/")]
     if min(len(role), len(wow_class), len(item)) < 3:
-        await ctx.send("Sorry but you must enter at least 3 letters to identify your role, class and item")
+        await user_dm.send(
+            (
+                f"You sent: `{user_message.content}`\n\n"
+                "Sorry but you must enter at least 3 letters to identify your role, class and item"
+                f"\nFix your command and message me again in the `{REQUEST_CHANNEL_NAME}` channel!"
+            )
+        )
+        await user_message.delete()
         return
 
     for existing_role in WOW_ROLES:
@@ -162,13 +181,16 @@ async def request(ctx, *message):
             role = existing_role
             break
     else:
-        await ctx.send(
+        await user_dm.send(
             (
+                f"You sent: `{user_message.content}`\n\n"
                 "Sorry, couldnt understand your declared role.\n"
                 "Format is: `!request <name>/<role>/<class>/<item>`\n"
-                "Your role choices are: {}"
-            ).format(" | ".join(WOW_ROLES))
+                f"Your role choices are: {' | '.join(WOW_ROLES)}"
+                f"\nFix your command and message me again in the `{REQUEST_CHANNEL_NAME}` channel!"
+            )
         )
+        await user_message.delete()
         return
 
     for existing_class in WOW_CLASSES:
@@ -176,19 +198,30 @@ async def request(ctx, *message):
             wow_class = existing_class
             break
     else:
-        await ctx.send(
+        await user_dm.send(
             (
+                f"You sent: `{user_message.content}`\n\n"
                 "Sorry, couldnt understand your declared class.\n"
                 "Format is: `!request <name>/<role>/<class>/<item>`\n"
-                "Your classes choices are: {}"
-            ).format(" | ".join(WOW_CLASSES))
+                f"Your classes choices are: {' | '.join(WOW_CLASSES)}"
+                f"\nFix your command and message me again in the `{REQUEST_CHANNEL_NAME}` channel!"
+            )
         )
+        await user_message.delete()
         return
+
     try:
         search = OpenSearch('item', item)
     except OpenSearchError as e:
         logger.info(e)
-        await ctx.send("Could not find any matching items. Try again.")
+        await user_dm.send(
+            (
+                f"You sent: `{user_message.content}`\n\n"
+                "Could not find any matching items. Try again."
+                f"\nFix your command and message me again in the `{REQUEST_CHANNEL_NAME}` channel!"
+            )
+        )
+        await user_message.delete()
         return
 
     # Valid item is one that we found on WoWhead and that is also part of our loot table
@@ -205,35 +238,41 @@ async def request(ctx, *message):
         break
 
     if valid_item is None:
-        await ctx.send("Found some items but none matched the droptable from bosses for this raid. Try again.")
+        await user_dm.send(
+            (
+                f"You sent: `{user_message.content}`\n\n"
+                "Found some items but none matched the droptable from bosses for this raid. Try again."
+                f"\nFix your command and message me again in the `{REQUEST_CHANNEL_NAME}` channel!"
+            )
+        )
+        await user_message.delete()
         return
 
-    state.priority_table[name] = Request(
+    request = Request(
         role=role, wow_class=wow_class, item=item.name,
         datetime=datetime.utcnow(), received_item=False
     )
-    user = ctx.author
+    state.priority_table[name] = request
+    request = request.as_presentable()
     await ctx.send(
         (
-            "Confirmed! Noting down [{}] for {}. "
-            "Check your DMs for the item's tooltip just to be sure!"
-        ).format(item.name, name.title())
+            "Confirmed! "
+            f"Noting down [{item.name}] for {name.title()}.\n"
+            f"Class: {request.wow_class} \t Role: {request.role}\n"
+            "Check your DMs for the requested item's tooltip just to be sure!"
+        )
     )
-    dm = user.dm_channel
-    if dm is None:
-        await user.create_dm()
-        dm = user.dm_channel
 
     try:
         item.get_tooltip_data()
     except SearchObjectError:
         logger.exception("Failed to get tooltip data")
-        await dm.send("Sorry! Something went wrong with the tooltip generation.")
+        await user_dm.send("Sorry! Something went wrong with the tooltip generation.")
     else:
         with BytesIO() as image_file:
             item.image.save(image_file, format="png")
             image_file.seek(0)
-            await dm.send(file=discord.File(image_file, filename="reserved.png"))
+            await user_dm.send(file=discord.File(image_file, filename="reserved.png"))
 
 
 @bot.command()
@@ -361,7 +400,7 @@ async def itemwin(ctx, character_name):
     state = GlobalState
     try:
         state.priority_table[character_name.casefold()].received_item = True
-        await ctx.send("Congrats, {}!".format(character_name))
+        await ctx.send(f"Congrats, {character_name}!")
     except KeyError:
         await ctx.send("This name isn't in my list. :frowning:")
 
@@ -421,7 +460,7 @@ async def status(ctx):
 
 if __name__ == "__main__":
     logging.basicConfig(
-        filename="{}/lootbot.log".format(path.dirname(path.abspath(__file__))),
+        filename=f"{path.dirname(path.abspath(__file__))}/lootbot.log",
         level=logging.INFO,
         filemode='w',
         format="%(levelname)s:%(name)s:[%(asctime)s] %(message)s",
