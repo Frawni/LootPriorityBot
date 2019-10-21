@@ -46,6 +46,8 @@ class GlobalState(metaclass=SingletonMetaclass):
 
     ! NOT THREAD SAFE !
     """
+
+    """Attributes that will be serialized/saved to disk"""
     # "<name>": Request recordclass
     priority_table: dict = field(default_factory=dict)
     # bool (true when locked, false when unlocked)
@@ -54,13 +56,23 @@ class GlobalState(metaclass=SingletonMetaclass):
     last_help: datetime = field(default=None)
     # When the raid was created with "!newraid"
     created: datetime = field(default=None)
-    info: str = field(default=None)
+    # Id of user who has initiated the newraid command and who must fill in the info in DMs
+    new_raid_user_id: int = field(default=None)
+    # Attributes of the raid itself
+    name: str = field(default=None)
+    description: str = field(default=None)
+    when: datetime = field(default=None)
+
     # The messages are serialized as their IDs and then converted Message objects in the bots on_readY()
     # Message id of the updating messages posted in the info channel
     status_message: discord.Message = field(default=None)
     table_messages: List[discord.Message] = field(default_factory=list)
+
+    """Attributes that shouldnt be serialized/saved"""
     # Reference to the discord info channel for message deleting
-    info_channel: discord.TextChannel = field(default=None)
+    initialized = False
+    info_channel = None
+    boot_time = None
 
     def load_current_saved_state(self):
         try:
@@ -78,14 +90,14 @@ class GlobalState(metaclass=SingletonMetaclass):
         with open(ABSOLUTE_CURRENT_SAVE_FP, "w") as f:
             json_dump(self, f)
 
-    def newraid(self, info=""):
+    def new_raid(self, name, description, when):
         with open(ABSOLUTE_PREVIOUS_SAVE_FP, "w") as f:
             json_dump(self, f)
         self.__init__(
-            info=info, lock_flag=False, created=datetime.now(), last_help=self.last_help,
-            status_message=self.status_message, table_messages=self.table_messages,
-            info_channel=self.info_channel)
-        self.save_current_state()
+            name=name, description=description, when=when,
+            lock_flag=False, last_help=self.last_help, created=datetime.now(),
+            status_message=self.status_message, table_messages=self.table_messages
+        )
         return self
 
 
@@ -126,7 +138,7 @@ def json_dump(obj, fp):
         if isinstance(obj, GlobalState):
             # We do this rather than using asdict() as that tries to deepcopy the values returned
             #   This fails spectacularly for the discord.Message object
-            return {field.name: getattr(obj, field.name) for field in fields(obj) if field.name != "info_channel"}
+            return {field.name: getattr(obj, field.name) for field in fields(obj)}
         if isinstance(obj, discord.Message):
             return obj.id
 

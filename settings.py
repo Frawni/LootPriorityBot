@@ -17,6 +17,8 @@ AUTHORIZED_CHANNELS = [
 SAVE_FILENAME = "current_raid.exe"
 PREVIOUS_SAVE_FILENAME = "previous_raid.exe"
 
+NEW_RAID_CANCEL_TRIGGER = "cancel"
+NEW_RAID_SPLIT_TOKEN = "|"
 
 HEADERS = ["Name", "Role", "Class", "Item Requested",
            "Time of Request (UTC)", "Received Item?"]

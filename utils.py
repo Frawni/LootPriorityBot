@@ -137,16 +137,26 @@ async def update_status():
         )
 
     embed = discord.Embed(
-        title=f"\n\n{f'{state.info}' if state.info else 'No raid info to display'}\n\n",
-        description=msg)
+        # title=f"\n\n{f'{state.info}' if state.info else 'No raid info to display'}\n\n",
+        title=f"<Placeholder>",
+        description=msg
+    )
     await state.status_message.edit(embed=embed, content="")
 
 
 async def update_table():
     state = GlobalState()
-    table_list = build_update_table()
-    for table, message in zip(table_list, state.table_messages):
-        await message.edit(content=table)
+    if state.priority_table:
+        table_list = build_update_table()
+        for table, message in zip(table_list, state.table_messages):
+            await message.edit(content=table)
+    else:
+        msg = (
+                "╒═══════════════════╕\n"
+                "│  Nothing to show here yet! │\n"
+                "╘═══════════════════╛"
+        )
+        await state.table_messages[0].edit(content=msg)
 
 
 def build_update_table():
@@ -175,7 +185,7 @@ def build_update_table():
     ordered_table = sorted(table, key=lambda x: (x[3], x[0]))
 
     row_count = len(ordered_table)
-    rows_per_msg = 12
+    rows_per_msg = 10
     i = 0
     if row_count > rows_per_msg:
         table_list.append("```" + tb.tabulate(ordered_table[(rows_per_msg*i):(rows_per_msg*(i+1))], headers=HEADERS, tablefmt="fancy_grid", ) + "```")

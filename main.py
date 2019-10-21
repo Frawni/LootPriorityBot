@@ -2,15 +2,9 @@
 # Last updated: 13th Oct 2019
 
 """
-FIX
-- message not popping up in sorting part of table builder
-
-POTENTIAL EXCEPTIONS (to be dealt with)
-- CommandNotFound (l 51)
-- MissingRole (ll 148, 175, 184, 209, 222)
-
 TODO
 - Remake all messages/status texts
+- End raid command
 FEATURES
 - set admin role on bot invite (+ allow more than one role?)
 - deal with second channel, different commands
@@ -35,7 +29,8 @@ loading previous raids
 
 import discord
 import logging
-from discord.ext.commands import Bot, has_role, CommandNotFound
+import asyncio
+from discord.ext.commands import Bot, has_role, CommandNotFound, MissingRole
 from datetime import datetime
 from io import BytesIO
 from os import path
@@ -44,7 +39,7 @@ from utils import build_table, write_info, write_help, init_update_messages, upd
 
 from loot_data import MC_BOSS_LOOT
 from settings import (
-    DISCORD_TOKEN, AUTHORIZED_CHANNELS, ADMIN_ROLE, PREFIX,
+    DISCORD_TOKEN, AUTHORIZED_CHANNELS, ADMIN_ROLE, PREFIX, NEW_RAID_SPLIT_TOKEN, NEW_RAID_CANCEL_TRIGGER,
     INFO_CHANNEL_NAME, REQUEST_CHANNEL_NAME, NUM_MESSAGES_FOR_TABLE,
     MC_BOSS_NAMES, WOW_ROLES, WOW_CLASSES
 )
@@ -93,17 +88,82 @@ async def on_ready():
 
     await update_status()
     await update_table()
+    state.initialized = True
     state.save_current_state()
-    print(f"On ready: {state.status_message.id}{[a.id for a in state.table_messages]}")
 
 
 @bot.event
 async def on_message(message):
+    state = GlobalState()
+    while not state.initialized:
+        await asyncio.sleep(1)
+
     channel = message.channel
     if channel.type == discord.ChannelType.private:
-        return
+        if state.new_raid_user_id == message.author.id:
+            await process_new_raid(message)
     elif channel.name in AUTHORIZED_CHANNELS:
         await bot.process_commands(message)
+
+
+async def process_new_raid(message):
+    state = GlobalState()
+    user_dm = message.channel
+    raid_info = message.content
+
+    if raid_info.strip().lower() == "cancel":
+        state.new_raid_user_id = None
+        await user_dm.send("Cancelling new raid. No changes have been made.")
+        return
+
+    if message.content.count(NEW_RAID_SPLIT_TOKEN) != 3:
+        await user_dm.send(
+            f"Not enough information supplied. You need to give 4 things split by 3 {NEW_RAID_SPLIT_TOKEN}"
+        )
+        return
+
+    raid_name, raid_desc, raid_date, raid_time = [
+        info.strip()
+        for info in message.content.split(NEW_RAID_SPLIT_TOKEN)
+    ]
+    if raid_time.count(":") != 1 or raid_date.count("/") != 2:
+        await user_dm.send(
+            "Your date and/or time is not formatted properly. Are you sure you are using '/' and ':'?"
+        )
+        return
+
+    # Make sure both inputs are 0-padded digits for the datetime parser
+    raid_date = "/".join(
+        [
+            part.strip().rjust(2, "0")                   # All digits must be 2 chars for datetime parse
+            if idx != 2 else part.strip().rjust(4, "0")  # Year needs to be padded to 4
+            for idx, part in enumerate(raid_date.split("/"))
+        ]
+    )
+    raid_time = ":".join([part.strip().rjust(2, "0") for part in raid_time.split(":")])
+    try:
+        raid_datetime = datetime.strptime(f"{raid_date} {raid_time}", "%d/%m/%Y %H:%M")
+    except ValueError as e:
+        print(e)
+        await user_dm.send(
+            "Your date and/or time is completely fucked. What did you do?"
+        )
+        return
+    await user_dm.send("All good! Initializing new raid.")
+    state.new_raid(
+        name=raid_name.strip(),
+        description=raid_desc.strip(),
+        when=raid_datetime
+    )
+    await user_dm.send(f"Wiping {INFO_CHANNEL_NAME}.")
+    print(type(state.table_messages), type(state.status_message))
+    bots_messages = [msg.id for msg in state.table_messages] + [state.status_message.id]
+    async for message in state.info_channel.history(limit=None):
+        if message.id not in bots_messages:
+            await message.delete()
+    await update_table()
+    await update_status()
+    await user_dm.send("New raid ready to go!")
 
 
 @bot.event
@@ -111,6 +171,9 @@ async def on_command_error(context, exception):
     if isinstance(exception, CommandNotFound):
         logger.warning(f"Unrecognized command: |{context.message.content}|")
         await context.channel.send("I do not recognize that command.")
+    elif isinstance(exception, MissingRole):
+        logger.warning(f"Missing role for user: |{context.message.author}| for message: |{context.message.content}")
+        await context.channel.send("You do not have the permissions to use that command.")
     else:
         logger.error(
             f"Exception in command {context.command}:",
@@ -343,17 +406,29 @@ async def show(ctx, *message):
 async def newraid(ctx, *message):
     # initialize priority table and unlock soft reserves
     # TODO: reinit channel
-    await ctx.send("Working on it!")
-    message = " ".join(message)
-    state = GlobalState().newraid(info=message)
+    state = GlobalState()
+    # Save the ID of the user initiating the newraid. Only they will be able to set it up
+    state.new_raid_user_id = ctx.author.id
 
-    bots_messages = [msg.id for msg in state.table_messages] + [state.status_message.id]
-    async for message in state.info_channel.history(limit=None):
-        if message.id not in bots_messages:
-            await message.delete()
-    await update_table()
-    await update_status()
-    await ctx.send("New raid loot reserves now open!")
+    user = ctx.author
+    user_dm = user.dm_channel
+    if user_dm is None:
+        await user.create_dm()
+        user_dm = user.dm_channel
+
+    s = NEW_RAID_SPLIT_TOKEN
+    c = NEW_RAID_CANCEL_TRIGGER
+
+    msg = (
+        f"To initialize the new raid reply to me here with the extra info in the format below or '{c}' to cancel.\n"
+        f"`<raid name> {s} <raid description> {s} <raid date> {s} <raid time>`\n\n"
+        "Date and time should be formatted as: dd/mm/yyyy and hh:mm\n"
+        "All times are assumed to be in 24h format and being server time.\n"
+        "For example:\n"
+        f"`Molten Core Full Clear {s} Lets clear MC again! {s} 01/02/2069 {s} 19:30`"
+    )
+    await user_dm.send(msg)
+    await ctx.message.delete()
 
 
 @bot.command()
@@ -504,6 +579,7 @@ if __name__ == "__main__":
     logging.info(" ")
 
     GlobalState().load_current_saved_state()
+    GlobalState().boot_time = datetime.now()
 
     try:
         bot.run(DISCORD_TOKEN)
