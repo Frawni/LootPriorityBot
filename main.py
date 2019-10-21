@@ -155,12 +155,15 @@ async def process_new_raid(message):
         description=raid_desc.strip(),
         when=raid_datetime
     )
-    await user_dm.send(f"Wiping {INFO_CHANNEL_NAME}.")
-    print(type(state.table_messages), type(state.status_message))
+    await user_dm.send("Saving new state.")
+    state.save_current_state()
+    await user_dm.send(f"Wiping `{INFO_CHANNEL_NAME}` channel.")
     bots_messages = [msg.id for msg in state.table_messages] + [state.status_message.id]
     async for message in state.info_channel.history(limit=None):
         if message.id not in bots_messages:
             await message.delete()
+
+    await user_dm.send(f"Updating banners in the `{INFO_CHANNEL_NAME}` channel.")
     await update_table()
     await update_status()
     await user_dm.send("New raid ready to go!")
@@ -170,10 +173,10 @@ async def process_new_raid(message):
 async def on_command_error(context, exception):
     if isinstance(exception, CommandNotFound):
         logger.warning(f"Unrecognized command: |{context.message.content}|")
-        await context.channel.send("I do not recognize that command.")
+        await context.channel.send("I do not recognize that command. Learn to type. Or read. Or both.")
     elif isinstance(exception, MissingRole):
         logger.warning(f"Missing role for user: |{context.message.author}| for message: |{context.message.content}")
-        await context.channel.send("You do not have the permissions to use that command.")
+        await context.channel.send("You do not have the permissions to use that command. Newb.")
     else:
         logger.error(
             f"Exception in command {context.command}:",
@@ -184,7 +187,7 @@ async def on_command_error(context, exception):
 # BASIC COMMANDS
 @bot.command()
 async def hello(ctx):
-    await ctx.send("Greetings!")
+    await ctx.send("Hewo! UwU")
 
 
 @bot.command()
@@ -216,7 +219,7 @@ async def help(ctx):
 
             channel = dm_channel
             change = False
-            await ctx.send("Sliding into your DMs, we don't want to spam, now. :kissing_heart:")
+            await ctx.send("Sliding into your DMs to give you some _personal_ help. :kissing_heart:")
 
     if change:
         state.last_help = datetime.utcnow()
@@ -229,7 +232,7 @@ async def help(ctx):
 @save_state
 async def request(ctx, *message):
     if ctx.channel.name != REQUEST_CHANNEL_NAME:
-        await ctx.send(f"Requests can only be done in the `{REQUEST_CHANNEL_NAME}` channel.")
+        await ctx.send(f"Requests can only be done in the `{REQUEST_CHANNEL_NAME}` channel. Now begone.")
         return
 
     state = GlobalState()
@@ -237,11 +240,11 @@ async def request(ctx, *message):
     # (one word for name and class right now)
     # and add/replace (if same name) to table
     if state.created is None:
-        await ctx.send("There is no raid currently being tracked. Ask an officer to create one.")
+        await ctx.send(f"There is no raid currently being tracked. Complain to an {ADMIN_ROLE} until something happens.")
         return
 
     if state.lock_flag:
-        await ctx.send("Raid loot reservation is currently locked. Sorry!")
+        await ctx.send("Raid loot reservation is currently locked. :PeepeeHands:")
         return
 
     user = ctx.author
@@ -256,8 +259,8 @@ async def request(ctx, *message):
         await user_dm.send(
             (
                 f"You sent: `{user_message.content}`\n\n"
-                "Um, maybe use **!help** first, love. It looks like you forgot something.:thinking:"
-                f"\nFix your command and message me again in the `{REQUEST_CHANNEL_NAME}` channel!"
+                "It looks like you forgot something.:thinking:"
+                f"\nFix your command (and your life) and message me again in the `{REQUEST_CHANNEL_NAME}` channel!\n"
             )
         )
         await user_message.delete()
@@ -268,8 +271,8 @@ async def request(ctx, *message):
         await user_dm.send(
             (
                 f"You sent: `{user_message.content}`\n\n"
-                "Sorry but you must enter at least 3 letters to identify your role, class and item"
-                f"\nFix your command and message me again in the `{REQUEST_CHANNEL_NAME}` channel!"
+                "I don't speak whatever this is. Write things out properly - and spell them right ffs."
+                f"\nFix your command (and your life) and message me again in the `{REQUEST_CHANNEL_NAME}` channel!"
             )
         )
         await user_message.delete()
@@ -283,10 +286,10 @@ async def request(ctx, *message):
         await user_dm.send(
             (
                 f"You sent: `{user_message.content}`\n\n"
-                "Sorry, couldnt understand your declared role.\n"
-                "Format is: `!request <name>/<role>/<class>/<item>`\n"
+                "Couldn't understand your declared role.\n"
+                "Format is: `>request <name>/<role>/<class>/<item>`\n"
                 f"Your role choices are: {' | '.join(WOW_ROLES)}"
-                f"\nFix your command and message me again in the `{REQUEST_CHANNEL_NAME}` channel!"
+                f"\nFix your command (and your life) and message me again in the `{REQUEST_CHANNEL_NAME}` channel!"
             )
         )
         await user_message.delete()
@@ -300,10 +303,10 @@ async def request(ctx, *message):
         await user_dm.send(
             (
                 f"You sent: `{user_message.content}`\n\n"
-                "Sorry, couldnt understand your declared class.\n"
-                "Format is: `!request <name>/<role>/<class>/<item>`\n"
+                "Couldn't understand your declared class.\n"
+                "Format is: `>request <name>/<role>/<class>/<item>`\n"
                 f"Your classes choices are: {' | '.join(WOW_CLASSES)}"
-                f"\nFix your command and message me again in the `{REQUEST_CHANNEL_NAME}` channel!"
+                f"\nFix your command (and your life) and message me again in the `{REQUEST_CHANNEL_NAME}` channel!"
             )
         )
         await user_message.delete()
@@ -316,8 +319,8 @@ async def request(ctx, *message):
         await user_dm.send(
             (
                 f"You sent: `{user_message.content}`\n\n"
-                "Could not find any matching items. Try again."
-                f"\nFix your command and message me again in the `{REQUEST_CHANNEL_NAME}` channel!"
+                "Could not find any matching items."
+                f"\nFigure your shit out and message me again in the `{REQUEST_CHANNEL_NAME}` channel!"
             )
         )
         await user_message.delete()
@@ -340,8 +343,8 @@ async def request(ctx, *message):
         await user_dm.send(
             (
                 f"You sent: `{user_message.content}`\n\n"
-                "Found some items but none matched the droptable from bosses for this raid. Try again."
-                f"\nFix your command and message me again in the `{REQUEST_CHANNEL_NAME}` channel!"
+                "Look, I agree, that is an item. You also have _zero_ chance of getting it doing this raid."
+                f"\nFigure your shit out and message me again in the `{REQUEST_CHANNEL_NAME}` channel!"
             )
         )
         await user_message.delete()
@@ -355,10 +358,9 @@ async def request(ctx, *message):
     request = request.as_presentable()
     await ctx.send(
         (
-            "Confirmed! "
             f"Noting down [{item.name}] for {name.title()}.\n"
             f"Class: {request.wow_class} \t Role: {request.role}\n"
-            "Check your DMs for the requested item's tooltip just to be sure!"
+            "Sending you the requested item's tooltip cause I didn't steal - I mean, copy - another bot's code for nothing!"
         )
     )
 
@@ -366,7 +368,7 @@ async def request(ctx, *message):
         item.get_tooltip_data()
     except SearchObjectError:
         logger.exception("Failed to get tooltip data")
-        await user_dm.send("Sorry! Something went wrong with the tooltip generation.")
+        await user_dm.send("Well, the tooltip generation fucked up. 'S not my code anyway.")
     else:
         with BytesIO() as image_file:
             item.image.save(image_file, format="png")
@@ -386,7 +388,7 @@ async def show(ctx, *message):
             await user.create_dm()
             dm_channel = user.dm_channel
 
-        await ctx.send("Sliding into your DMs :wink:")
+        await ctx.send("Sliding into your DMs. :wink:")
 
         sort_by = ""
         if message:
@@ -396,7 +398,7 @@ async def show(ctx, *message):
             await dm_channel.send(table)
 
     else:
-        await ctx.send("Nothing to show yet!")
+        await ctx.send("I got nothing to show you, my dude.")
 
 
 # ADMIN COMMANDS
@@ -455,7 +457,7 @@ async def boss(ctx, *message):
     # 1 or majordomo executus
     input = message
     if not len(input):
-        await ctx.send("Wtf mate gimme somen to work with here")
+        await ctx.send("Am I supposed to guess? What boss do you want?")
         return
 
     potential_loot = None
@@ -464,7 +466,7 @@ async def boss(ctx, *message):
         # Boss identified by his number
         boss_number = int(input[0]) - 1
         if boss_number not in range(len(MC_BOSS_NAMES)):
-            await ctx.send("Not a real number.")
+            await ctx.send("Not a real number. Do I have to spell everything out?")
             return
         else:
             boss_name = MC_BOSS_NAMES[boss_number]
@@ -478,7 +480,7 @@ async def boss(ctx, *message):
                 potential_loot = MC_BOSS_LOOT[boss_name]
                 break
         else:
-            await ctx.send("No boss with that name found")
+            await ctx.send("No boss with that name found. Type better.")
             return
 
     assert boss_name is not None
@@ -506,7 +508,7 @@ async def itemwin(ctx, character_name):
         state.priority_table[character_name.casefold()].received_item = True
         await ctx.send(f"Congrats, {character_name}!")
     except KeyError:
-        await ctx.send("This name isn't in my list. :frowning:")
+        await ctx.send("I don't know this person. :frowning:")
 
 
 @bot.command()
@@ -522,45 +524,6 @@ async def winners(ctx):
         for table in table_list:
             await ctx.send(table)
 
-
-@bot.command()
-async def status(ctx):
-    pass
-
-# # QUICK AND DIRTY AUTOMATION OF TEXT CAUSE I CAN'T SEEM TO BE ABLE TO READ OTHER BOT MESSAGES
-# @bot.command()
-# async def doit(ctx):
-#     with open("requests.txt", "r") as f:
-#         for line in f:
-#             name, role, wow_class, item = [info.strip().casefold() for info in line.split("/")]
-#             try:
-#                 search = OpenSearch('item', item)
-#             except OpenSearchError as e:
-#                 logger.info(e)
-#                 await ctx.send("Could not find any matching items. Try again.")
-#                 return
-#
-#             # valid_item = None
-#             for item in search.results:
-#                 for boss in MC_BOSS_LOOT:
-#                     if item.id in MC_BOSS_LOOT[boss]:
-#                         # valid_item = item
-#                         break
-#                 else:
-#                     continue
-#                 break
-#
-#             # if valid_item is None:
-#             #     await ctx.send("Found some items but none matched the droptable from bosses for this raid. Try again.")
-#             #     return
-#
-#             PRIORITY_TABLE[name] = Request(
-#                 role=role, wow_class=wow_class, item=item.name,
-#                 datetime=datetime.utcnow(), received_item=False
-#             )
-#     table_list = build_table(PRIORITY_TABLE)
-#     for table in table_list:
-#         await ctx.send(table)
 
 if __name__ == "__main__":
     logging.basicConfig(

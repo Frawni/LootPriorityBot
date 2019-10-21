@@ -125,22 +125,39 @@ def write_help_pleb():
 
 async def update_status():
     state = GlobalState()
+    # if state.created:
+    #     msg = (
+    #         "There is currently a raid being tracked!\n"
+    #         f"{len(state.priority_table)} player{'s' if len(state.priority_table) > 1 else ''} have currently reserved loot.\n"
+    #         f"Loot requests are currently: {'LOCKED' if state.lock_flag else 'OPEN'}\n"
+    #     )
+    # else:
+    #     msg = (
+    #         "There is currently NO raid being tracked!\n"
+    #     )
     if state.created:
-        msg = (
-            "There is currently a raid being tracked!\n"
-            f"{len(state.priority_table)} player{'s' if len(state.priority_table) > 1 else ''} have currently reserved loot.\n"
-            f"Loot requests are currently: {'LOCKED' if state.lock_flag else 'OPEN'}\n"
+        embed = discord.Embed(
+            title=f"{state.name}",
+            description=f"{state.description}"
+        )
+        embed.add_field(
+            name="Raid Time",
+            value=f"{state.when}",
+            inline=False
+        )
+        embed.add_field(
+            name="Player Requests",
+            value=f"{len(state.priority_table)}"
+        )
+        embed.add_field(
+            name="Request Status",
+            value=f"{'LOCKED' if state.lock_flag else 'OPEN'}"
         )
     else:
-        msg = (
-            "There is currently NO raid being tracked!\n"
+        embed = discord.Embed(
+            title="Nope",
+            description="No raid is being tracked at the moment."
         )
-
-    embed = discord.Embed(
-        # title=f"\n\n{f'{state.info}' if state.info else 'No raid info to display'}\n\n",
-        title=f"<Placeholder>",
-        description=msg
-    )
     await state.status_message.edit(embed=embed, content="")
 
 
