@@ -9,9 +9,9 @@ POTENTIAL EXCEPTIONS (to be dealt with)
 - CommandNotFound (l 51)
 - MissingRole (ll 148, 175, 184, 209, 222)
 
+TODO
+- Remake all messages/status texts
 FEATURES
-- manage channels
-- status -> info of raid/number of people that reserved, also by role
 - set admin role on bot invite (+ allow more than one role?)
 - deal with second channel, different commands
 - search function for tooltip/through table
@@ -40,12 +40,12 @@ from datetime import datetime
 from io import BytesIO
 from os import path
 
-from utils import build_table, write_info, write_help
+from utils import build_table, write_info, write_help, init_update_messages, update_status, update_table
 
 from loot_data import MC_BOSS_LOOT
 from settings import (
     DISCORD_TOKEN, AUTHORIZED_CHANNELS, ADMIN_ROLE, PREFIX,
-    INFO_CHANNEL_NAME, REQUEST_CHANNEL_NAME, DISCUSSION_CHANNEL_NAME,
+    INFO_CHANNEL_NAME, REQUEST_CHANNEL_NAME, NUM_MESSAGES_FOR_TABLE,
     MC_BOSS_NAMES, WOW_ROLES, WOW_CLASSES
 )
 from open_search.open_search import OpenSearch, OpenSearchError, SearchObjectError
@@ -60,9 +60,41 @@ bot.remove_command("help")
 
 @bot.event
 async def on_ready():
-    logger.info("Successfully logged in as {}".format(bot.user.name))
+    logger.info(f"Successfully logged in as {bot.user.name}")
+
+    logger.info("Looking for info channel")
+    info_channel = None
     for channel in bot.get_all_channels():
-        print(channel.name)
+        if channel.name == INFO_CHANNEL_NAME:
+            info_channel = channel
+            break
+
+    if info_channel is None:
+        logger.error(f"Could not find info channel, options were: {bot.get_all_channels()} ")
+        exit()
+
+    state = GlobalState()
+    state.info_channel = channel
+    # Loading/Initializing references to the auto-updating messages
+    logger.info("Initializing updating messages")
+    logger.info(f"Status_message is: |{state.status_message}|\nTable_message is: |{state.table_messages}|")
+    if state.status_message is None or len(state.table_messages) != NUM_MESSAGES_FOR_TABLE:
+        await init_update_messages(channel)
+    else:
+        try:
+            state.status_message = await channel.fetch_message(state.status_message)
+            for i in range(NUM_MESSAGES_FOR_TABLE):
+                state.table_messages[i] = await channel.fetch_message(state.table_messages[i])
+        except discord.NotFound:
+            logger.exception("Could not find info/status messages by their saved id. Reiniting")
+            state.status_message = await channel.send("Booting - Status Message")
+            for i in range(NUM_MESSAGES_FOR_TABLE):
+                state.table_messages[i] = await channel.send("~Reserved for loot table~")
+
+    await update_status()
+    await update_table()
+    state.save_current_state()
+    print(f"On ready: {state.status_message.id}{[a.id for a in state.table_messages]}")
 
 
 @bot.event
@@ -133,6 +165,10 @@ async def help(ctx):
 @bot.command()
 @save_state
 async def request(ctx, *message):
+    if ctx.channel.name != REQUEST_CHANNEL_NAME:
+        await ctx.send(f"Requests can only be done in the `{REQUEST_CHANNEL_NAME}` channel.")
+        return
+
     state = GlobalState()
     # parse message for <name>/<class>/<item>
     # (one word for name and class right now)
@@ -306,8 +342,17 @@ async def show(ctx, *message):
 @save_state
 async def newraid(ctx, *message):
     # initialize priority table and unlock soft reserves
+    # TODO: reinit channel
+    await ctx.send("Working on it!")
     message = " ".join(message)
-    GlobalState().newraid(info=message)
+    state = GlobalState().newraid(info=message)
+
+    bots_messages = [msg.id for msg in state.table_messages] + [state.status_message.id]
+    async for message in state.info_channel.history(limit=None):
+        if message.id not in bots_messages:
+            await message.delete()
+    await update_table()
+    await update_status()
     await ctx.send("New raid loot reserves now open!")
 
 
@@ -327,22 +372,6 @@ async def unlock(ctx):
     # lower flag for more soft reserves
     GlobalState().lock_flag = False
     await ctx.send("Raid priority is open once more!")
-
-
-@bot.command()
-@has_role(ADMIN_ROLE)
-async def showall(ctx, *message):
-    # print table of requests in channel
-    state = GlobalState()
-    if state.priority_table != {}:
-        sort_by = ""
-        if message:
-            sort_by = " ".join(message)
-        table_list = build_table(state.priority_table, sort_by)
-        for table in table_list:
-            await ctx.send(table)
-    else:
-        await ctx.send("Nothing to show yet!")
 
 
 @bot.command()

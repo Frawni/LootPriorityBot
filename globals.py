@@ -1,6 +1,8 @@
 import logging
 import json
-from dataclasses import dataclass, field, asdict
+import discord
+from typing import List
+from dataclasses import dataclass, field, asdict, fields
 from datetime import datetime
 from os import path
 
@@ -52,8 +54,13 @@ class GlobalState(metaclass=SingletonMetaclass):
     last_help: datetime = field(default=None)
     # When the raid was created with "!newraid"
     created: datetime = field(default=None)
-    # Misc information about the raid (Free text entered upon raid creation)
     info: str = field(default=None)
+    # The messages are serialized as their IDs and then converted Message objects in the bots on_readY()
+    # Message id of the updating messages posted in the info channel
+    status_message: discord.Message = field(default=None)
+    table_messages: List[discord.Message] = field(default_factory=list)
+    # Reference to the discord info channel for message deleting
+    info_channel: discord.TextChannel = field(default=None)
 
     def load_current_saved_state(self):
         try:
@@ -74,8 +81,12 @@ class GlobalState(metaclass=SingletonMetaclass):
     def newraid(self, info=""):
         with open(ABSOLUTE_PREVIOUS_SAVE_FP, "w") as f:
             json_dump(self, f)
-        self.__init__(lock_flag=False, created=datetime.utcnow(), last_help=self.last_help)
+        self.__init__(
+            info=info, lock_flag=False, created=datetime.now(), last_help=self.last_help,
+            status_message=self.status_message, table_messages=self.table_messages,
+            info_channel=self.info_channel)
         self.save_current_state()
+        return self
 
 
 """
@@ -110,7 +121,13 @@ def json_dump(obj, fp):
     def json_custom_serializer(obj):
         if isinstance(obj, datetime):
             return obj.isoformat()
-        if isinstance(obj, Request) or isinstance(obj, GlobalState):
+        if isinstance(obj, Request):
             return asdict(obj)
+        if isinstance(obj, GlobalState):
+            # We do this rather than using asdict() as that tries to deepcopy the values returned
+            #   This fails spectacularly for the discord.Message object
+            return {field.name: getattr(obj, field.name) for field in fields(obj) if field.name != "info_channel"}
+        if isinstance(obj, discord.Message):
+            return obj.id
 
     return json.dump(obj, default=json_custom_serializer, fp=fp)

@@ -1,8 +1,11 @@
 import discord
-from tabulate import tabulate
+import tabulate as tb
 
 from info import AUTHOR, SOURCE, INVITE
-from settings import HEADERS
+from globals import GlobalState
+from settings import HEADERS, NUM_MESSAGES_FOR_TABLE, PREFIX
+
+tb.PRESERVE_WHITESPACE = True
 
 
 def build_table(DICTIONARY, sort_by=""):
@@ -33,10 +36,10 @@ def build_table(DICTIONARY, sort_by=""):
     i = 0
 
     while row_count > separator:
-        table_list.append("```" + tabulate(ordered_table[(separator*i):(separator*(i+1))], headers=HEADERS, tablefmt="psql") + "```")
+        table_list.append("```" + tb.tabulate(ordered_table[(separator*i):(separator*(i+1))], headers=HEADERS, tablefmt="psql") + "```")
         row_count -= separator
         i += 1
-    table_list.append("```" + tabulate(ordered_table[(separator*i):], headers=HEADERS, tablefmt="psql") + "```")
+    table_list.append("```" + tb.tabulate(ordered_table[(separator*i):], headers=HEADERS, tablefmt="psql") + "```")
 
     return table_list
 
@@ -60,37 +63,32 @@ def write_help_admin():
         title="Extra commands for the privileged."
     )
     embed_admin.add_field(
-        name="!newraid",
+        name=f"{PREFIX}newraid",
         value="Resets the list of requests and unlocks the request command",
         inline=False
     )
     embed_admin.add_field(
-        name="!lock",
+        name=f"{PREFIX}lock",
         value="Locks requests - no new ones accepted",
         inline=False
     )
     embed_admin.add_field(
-        name="!unlock",
+        name=f"{PREFIX}unlock",
         value="You done goofed and people need to change stuff? No problem!",
         inline=False
     )
     embed_admin.add_field(
-        name="!showall (<filter>)",
-        value="Shows the table of requested items in the channel, same functionality as !show",
-        inline=False
-    )
-    embed_admin.add_field(
-        name="!boss",
+        name=f"{PREFIX}boss",
         value="Shows the table for items relevant to that boss",
         inline=False
     )
     embed_admin.add_field(
-        name="!itemwin <character name>",
+        name=f"{PREFIX}itemwin <character name>",
         value="Records the person who won their requested item",
         inline=False
     )
     embed_admin.add_field(
-        name="!winners",
+        name=f"{PREFIX}winners",
         value="Shows the table for people who won their requested item",
         inline=False
     )
@@ -103,23 +101,102 @@ def write_help_pleb():
         description="A list of basic commands:"
     )
     embed_pleb.add_field(
-        name="!request <character name>/<role> (tank|healer|dps)/<class>/<item>",
+        name=f"{PREFIX}request <character name>/<role> (tank|healer|dps)/<class>/<item>",
         value="Request priority on an item for the upcoming raid\nIf your name is already on the list, it will replace the previous item",
         inline=False
     )
     embed_pleb.add_field(
-        name="!show (<filter>)",
+        name=f"{PREFIX}show (<filter>)",
         value="Sends you the table of existing requests, can add the name of the column to filter by",
         inline=False
     )
     embed_pleb.add_field(
-        name="!info",
+        name=f"{PREFIX}info",
         value="Authors, source code link, invite link",
         inline=False
     )
     embed_pleb.add_field(
-        name="!help",
+        name=f"{PREFIX}help",
         value="Whaddya think?",
         inline=False
     )
     return embed_pleb
+
+
+async def update_status():
+    state = GlobalState()
+    if state.created:
+        msg = (
+            "There is currently a raid being tracked!\n"
+            f"{len(state.priority_table)} player{'s' if len(state.priority_table) > 1 else ''} have currently reserved loot.\n"
+            f"Loot requests are currently: {'LOCKED' if state.lock_flag else 'OPEN'}\n"
+        )
+    else:
+        msg = (
+            "There is currently NO raid being tracked!\n"
+        )
+
+    embed = discord.Embed(
+        title=f"\n\n{f'{state.info}' if state.info else 'No raid info to display'}\n\n",
+        description=msg)
+    await state.status_message.edit(embed=embed, content="")
+
+
+async def update_table():
+    state = GlobalState()
+    table_list = build_update_table()
+    for table, message in zip(table_list, state.table_messages):
+        await message.edit(content=table)
+
+
+def build_update_table():
+    HEADERS = ["Name", "Role", "Class", "Item"]
+    state = GlobalState()
+
+    table = []
+    table_list = []
+
+    max_name_size = max(len(name) for name in state.priority_table.keys())
+    max_item_size = max(len(request.item) for request in state.priority_table.values())
+    max_role_size = max(len(request.role) for request in state.priority_table.values())
+    max_class_size = max(len(request.wow_class) for request in state.priority_table.values())
+    max_item_size = max(len(request.item) for request in state.priority_table.values())
+
+    for key in state.priority_table.keys():
+        request = state.priority_table[key].as_presentable()
+        row = [
+            key.title().ljust(max_name_size, " "),
+            request.role.ljust(max_role_size, " "),
+            request.wow_class.ljust(max_class_size, " "),
+            request.item.ljust(max_item_size, " "),
+        ]
+        table.append(row)
+
+    ordered_table = sorted(table, key=lambda x: (x[3], x[0]))
+
+    row_count = len(ordered_table)
+    rows_per_msg = 12
+    i = 0
+    if row_count > rows_per_msg:
+        table_list.append("```" + tb.tabulate(ordered_table[(rows_per_msg*i):(rows_per_msg*(i+1))], headers=HEADERS, tablefmt="fancy_grid", ) + "```")
+        row_count -= rows_per_msg
+        i += 1
+    else:
+        table_list.append("```" + tb.tabulate(ordered_table[(rows_per_msg*i):], headers=HEADERS, tablefmt="fancy_grid", ) + "```")
+        return table_list
+
+    while row_count > rows_per_msg:
+        table_list.append("```" + tb.tabulate(ordered_table[(rows_per_msg*i):(rows_per_msg*(i+1))], tablefmt="fancy_grid", ) + "```")
+        row_count -= rows_per_msg
+        i += 1
+    table_list.append("```" + tb.tabulate(ordered_table[(rows_per_msg*i):], tablefmt="fancy_grid", ) + "```")
+
+    return table_list
+
+
+async def init_update_messages(channel):
+    state = GlobalState()
+    state.table_messages = []
+    for i in range(NUM_MESSAGES_FOR_TABLE):
+        state.table_messages.append(await channel.send("~Message reserved for loot table~"))
+    state.status_message = await channel.send("Status Message - Booting")
