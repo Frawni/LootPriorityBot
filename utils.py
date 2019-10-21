@@ -169,9 +169,7 @@ async def update_table():
             await message.edit(content=table)
     else:
         msg = (
-                "╒═══════════════════╕\n"
-                "│  Nothing to show here yet! │\n"
-                "╘═══════════════════╛"
+                "Nothing to see here... yet."
         )
         await state.table_messages[0].edit(content=msg)
 
