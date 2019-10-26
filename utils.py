@@ -3,24 +3,28 @@ import tabulate as tb
 
 from info import AUTHOR, SOURCE, INVITE
 from globals import GlobalState
-from settings import HEADERS, NUM_MESSAGES_FOR_TABLE, PREFIX
+from settings import NUM_MESSAGES_FOR_TABLE, PREFIX
 
 tb.PRESERVE_WHITESPACE = True
 
 
-def build_table(DICTIONARY, sort_by=""):
+def build_table(priority_table, sort_by=""):
+    HEADERS = [
+        "Name", "Role", "Class", "Item",
+        "Time of Request", "Received?"
+    ]
     table = []
     table_list = []
 
-    for key in DICTIONARY.keys():
-        request = DICTIONARY[key].as_presentable()
+    for key in priority_table.keys():
+        request = priority_table[key].as_presentable()
         time = request.datetime
         time_str = "{:02d}:{:02d}:{:02d}".format(time.hour, time.minute, time.second)
         item_received = "{}".format("Yes" if request.received_item else "No")
         row = [key.title(), request.role, request.wow_class, request.item] + [time_str, item_received]
         table.append(row)
 
-    index = HEADERS.index("Item Requested")
+    index = HEADERS.index("Item")
     if sort_by != "":
         for header in HEADERS:
             if sort_by.casefold() in header.casefold():
@@ -36,10 +40,10 @@ def build_table(DICTIONARY, sort_by=""):
     i = 0
 
     while row_count > separator:
-        table_list.append("```" + tb.tabulate(ordered_table[(separator*i):(separator*(i+1))], headers=HEADERS, tablefmt="psql") + "```")
+        table_list.append("```" + tb.tabulate(ordered_table[(separator*i):(separator*(i+1))], headers=HEADERS, tablefmt="fancy_grid") + "```")
         row_count -= separator
         i += 1
-    table_list.append("```" + tb.tabulate(ordered_table[(separator*i):], headers=HEADERS, tablefmt="psql") + "```")
+    table_list.append("```" + tb.tabulate(ordered_table[(separator*i):], headers=HEADERS, tablefmt="fancy_grid") + "```")
 
     return table_list
 
