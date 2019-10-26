@@ -61,6 +61,7 @@ class GlobalState(metaclass=SingletonMetaclass):
     # When the raid was created with "!newraid"
     created: datetime = field(default=None)
     # Id of user who has initiated the newraid command and who must fill in the info in DMs
+    # Is automatically reset to None when state is reinitialized for a new raid
     new_raid_user_id: int = field(default=None)
     # Attributes of the raid itself
     name: str = field(default=None)
@@ -73,8 +74,9 @@ class GlobalState(metaclass=SingletonMetaclass):
     table_messages: List[discord.Message] = field(default_factory=list)
 
     """Attributes that shouldnt be serialized/saved"""
-    # Reference to the discord info channel for message deleting
+    # Set to True in the on_ready() callback once all messages/channels have been properly deserialized/inited
     initialized = False
+    # Reference to the discord info channel for message deleting
     info_channel = None
     boot_time = None
 

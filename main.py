@@ -92,6 +92,10 @@ async def on_ready():
 
 @bot.event
 async def on_message(message):
+    # Ignore messages that we sent
+    if message.author.id == bot.user.id:
+        return
+
     state = GlobalState()
     while not state.initialized:
         await asyncio.sleep(1)
@@ -544,7 +548,7 @@ if __name__ == "__main__":
     logging.basicConfig(
         filename=f"{path.dirname(path.abspath(__file__))}/lootbot.log",
         level=logging.INFO,
-        filemode='w',
+        filemode='a',
         format="%(levelname)s:%(name)s:[%(asctime)s] %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S"
     )
