@@ -264,7 +264,7 @@ async def request(ctx, *message):
         return
 
     if state.lock_flag:
-        await ctx.send("Raid loot reservation is currently locked. :PeepeeHands:")
+        await ctx.send("Raid loot reservation is currently locked.")
         return
 
     user = ctx.author
