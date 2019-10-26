@@ -181,21 +181,24 @@ async def update_table():
         await state.table_messages[0].edit(content=msg)
 
 
-def build_update_table():
+def build_update_table(loot_table=None):
     HEADERS = ["Name", "Role", "Class", "Item"]
-    state = GlobalState()
+
+    if loot_table is None:
+        state = GlobalState()
+        loot_table = state.priority_table
 
     table = []
     table_list = []
 
-    max_name_size = max(len(name) for name in state.priority_table.keys())
-    max_item_size = max(len(request.item) for request in state.priority_table.values())
-    max_role_size = max(len(request.role) for request in state.priority_table.values())
-    max_class_size = max(len(request.wow_class) for request in state.priority_table.values())
-    max_item_size = max(len(request.item) for request in state.priority_table.values())
+    max_name_size = max(len(name) for name in loot_table.keys())
+    max_item_size = max(len(request.item) for request in loot_table.values())
+    max_role_size = max(len(request.role) for request in loot_table.values())
+    max_class_size = max(len(request.wow_class) for request in loot_table.values())
+    max_item_size = max(len(request.item) for request in loot_table.values())
 
-    for key in state.priority_table.keys():
-        request = state.priority_table[key].as_presentable()
+    for key in loot_table.keys():
+        request = loot_table[key].as_presentable()
         row = [
             key.title().ljust(max_name_size, " "),
             request.role.ljust(max_role_size, " "),
