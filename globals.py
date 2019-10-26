@@ -24,7 +24,11 @@ class Request:
     received_item: bool
 
     def as_presentable(self):
-        data = {k: v.title() if isinstance(v, str) else v for k, v in asdict(self).items()}
+        data = {
+            k: v.title()
+            if isinstance(v, str) and k != "item" else v
+            for k, v in asdict(self).items()
+        }
         return Request(**data)
 
 

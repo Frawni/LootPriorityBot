@@ -78,7 +78,7 @@ def write_help_admin():
         inline=False
     )
     embed_admin.add_field(
-        name=f"{PREFIX}boss",
+        name=f"{PREFIX}boss <name/number>",
         value="Shows the table for items relevant to that boss",
         inline=False
     )

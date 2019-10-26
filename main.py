@@ -1,9 +1,7 @@
-# Author: Caroline Forest
-# Last updated: 13th Oct 2019
+# Last updated: 26th Oct 2019
 
 """
 TODO
-- Remake all messages/status texts
 - End raid command
 FEATURES
 - set admin role on bot invite (+ allow more than one role?)
@@ -99,11 +97,29 @@ async def on_message(message):
         await asyncio.sleep(1)
 
     channel = message.channel
+    # New raid is being set up
     if channel.type == discord.ChannelType.private:
         if state.new_raid_user_id == message.author.id:
             await process_new_raid(message)
+
+    # We only care for our 3 channels, rest can be ignored
     elif channel.name in AUTHORIZED_CHANNELS:
-        await bot.process_commands(message)
+        # Only request commands are allowed in the request channel
+        if channel.name == REQUEST_CHANNEL_NAME:
+            if message.content.startswith(f"{PREFIX}request"):
+                await bot.process_commands(message)
+            else:
+                await message.delete()
+                user = message.author
+                user_dm = user.dm_channel
+                if user_dm is None:
+                    await user.create_dm()
+                    user_dm = user.dm_channel
+                await user_dm.send(
+                    f"Only requests allowed in the `{REQUEST_CHANNEL_NAME}` channel"
+                )
+        else:
+            await bot.process_commands(message)
 
 
 async def process_new_raid(message):
@@ -267,12 +283,12 @@ async def request(ctx, *message):
         return
 
     name, role, wow_class, item = [info.strip().casefold() for info in request.split("/")]
-    if min(len(role), len(wow_class), len(item)) < 3:
+    if min(len(role), len(wow_class), len(item), len(name)) < 3:
         await user_dm.send(
             (
                 f"You sent: `{user_message.content}`\n\n"
-                "I don't speak whatever this is. Write things out properly - and spell them right ffs."
-                f"\nFix your command (and your life) and message me again in the `{REQUEST_CHANNEL_NAME}` channel!"
+                "I don't speak whatever this is. Write things out properly - and spell them right ffs.\n"
+                f"Fix your command (and your life) and message me again in the `{REQUEST_CHANNEL_NAME}` channel!"
             )
         )
         await user_message.delete()
@@ -360,7 +376,6 @@ async def request(ctx, *message):
         (
             f"Noting down [{item.name}] for {name.title()}.\n"
             f"Class: {request.wow_class} \t Role: {request.role}\n"
-            "Sending you the requested item's tooltip cause I didn't steal - I mean, copy - another bot's code for nothing!"
         )
     )
 
