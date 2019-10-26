@@ -33,7 +33,10 @@ from datetime import datetime
 from io import BytesIO
 from os import path
 
-from utils import build_table, write_info, write_help, init_update_messages, update_status, update_table
+from utils import (
+    build_table, write_info, write_help, init_update_messages,
+    update_status, update_table, build_update_table
+)
 
 from loot_data import MC_BOSS_LOOT
 from settings import (
@@ -512,7 +515,7 @@ async def boss(ctx, *message):
         for character_name in state.priority_table.keys():
             if state.priority_table[character_name].item.casefold() == item_name.casefold():
                 RELEVANT_TABLE[character_name] = state.priority_table[character_name]
-    table_list = build_table(RELEVANT_TABLE)
+    table_list = build_update_table()
     await ctx.send("**" + boss_name.title() + "**")
     for table in table_list:
         await ctx.send(table)
@@ -539,7 +542,7 @@ async def winners(ctx):
         for player_name, request in state.priority_table.items():
             if request.received_item:
                 WINNERS[player_name] = state.priority_table[player_name]
-        table_list = build_table(WINNERS, sort_by="name")
+        table_list = build_update_table(WINNERS, sort_by="name")
         for table in table_list:
             await ctx.send(table)
 
