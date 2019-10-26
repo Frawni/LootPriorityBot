@@ -1,7 +1,7 @@
 DISCORD_TOKEN = "rho sucks at using filters"
 
 PREFIX = ">"
-ADMIN_ROLE = "Officer"
+ADMIN_ROLE = "Loot Master"
 
 INFO_CHANNEL_NAME = "loot-info"
 REQUEST_CHANNEL_NAME = "loot-request"
