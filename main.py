@@ -544,7 +544,7 @@ if __name__ == "__main__":
     logging.basicConfig(
         filename=f"{path.dirname(path.abspath(__file__))}/lootbot.log",
         level=logging.INFO,
-        filemode='w',
+        filemode='a',
         format="%(levelname)s:%(name)s:[%(asctime)s] %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S"
     )
