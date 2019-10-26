@@ -4,12 +4,18 @@ Copied from https://github.com/mikeStr8s/ClassicBot
 
 
 import textwrap
-from io import BytesIO
-
 import requests
+from io import BytesIO
+from os import path
 from PIL import Image, ImageDraw, ImageFont
 
-from open_search.constants import MAX_CHARS, ICON, LINE_HEIGHT, SMALL_PADDING, HEIGHT, DISCORD_BG, BG_COLOR, COLORS, INDENT, MONEY
+from open_search.constants import (
+    MAX_CHARS, ICON, LINE_HEIGHT, SMALL_PADDING, HEIGHT,
+    DISCORD_BG, BG_COLOR, COLORS, INDENT, MONEY
+)
+
+
+FONT_FP = path.join(path.dirname(path.abspath(__file__)), 'micross.ttf')
 
 
 def build_tooltip(lines, icon_name):
@@ -26,7 +32,7 @@ def build_tooltip(lines, icon_name):
 
 
 def add_tooltip_text(container, lines, max_length):
-    fnt = ImageFont.truetype('open_search/micross.ttf', 12)
+    fnt = ImageFont.truetype(FONT_FP, 12)
     for idx, line in enumerate(lines):
         drawer = ImageDraw.Draw(container)
         if line['args'] is not None:
@@ -117,6 +123,7 @@ def wrap_text(lines):
             if len(text) > len(max_line):
                 max_line = text
     drawer = ImageDraw.Draw(Image.new('RGB', (100, 100), color=BG_COLOR))
-    max_line_length = drawer.textsize(max_line, ImageFont.truetype('open_search/micross.ttf', 12))[0]
-    if max_line_length < 85: max_line_length = 85
+    max_line_length = drawer.textsize(max_line, ImageFont.truetype(FONT_FP, 12))[0]
+    if max_line_length < 85:
+        max_line_length = 85
     return wrapped_lines, max_line_length
