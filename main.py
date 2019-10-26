@@ -509,7 +509,7 @@ async def boss(ctx, *message):
             if state.priority_table[character_name].item.casefold() == item_name.casefold():
                 RELEVANT_TABLE[character_name] = state.priority_table[character_name]
     table_list = build_table(RELEVANT_TABLE)
-    await ctx.send("**" + boss_name + "**")
+    await ctx.send("**" + boss_name.title() + "**")
     for table in table_list:
         await ctx.send(table)
 
@@ -518,7 +518,7 @@ async def boss(ctx, *message):
 @has_role(ADMIN_ROLE)
 @save_state
 async def itemwin(ctx, character_name):
-    state = GlobalState
+    state = GlobalState()
     try:
         state.priority_table[character_name.casefold()].received_item = True
         await ctx.send(f"Congrats, {character_name}!")
