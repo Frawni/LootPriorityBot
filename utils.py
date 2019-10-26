@@ -49,10 +49,13 @@ def build_table(priority_table, sort_by=""):
 
 
 def write_info():
-    embed = discord.Embed(title="Loot Priority Bot", description="Waaaaay better than writing everything by hand, wouldn't you agree?")
+    state = GlobalState()
+    embed = discord.Embed(title="Loot Priority Bot",
+                          description="Waaaaay better than writing everything by hand, wouldn't you agree?")
     embed.add_field(name="Authors", value=AUTHOR)
     embed.add_field(name="Source", value=SOURCE)
     embed.add_field(name="Invite", value=INVITE)
+    embed.add_field(name="Last Booted", value=f"{state.boot_time}")
     return embed
 
 
@@ -147,11 +150,6 @@ async def update_status():
         embed.add_field(
             name="Raid Time",
             value=f"{state.when}"
-        )
-        embed.add_field(
-            name="Bot Boot Time",
-            value=f"{state.boot_time}",
-            inline=False
         )
         embed.add_field(
             name="Player Requests",
