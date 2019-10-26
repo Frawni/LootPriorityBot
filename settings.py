@@ -20,9 +20,6 @@ PREVIOUS_SAVE_FILENAME = "previous_raid.exe"
 NEW_RAID_CANCEL_TRIGGER = "cancel"
 NEW_RAID_SPLIT_TOKEN = "|"
 
-HEADERS = ["Name", "Role", "Class", "Item Requested",
-           "Time of Request (UTC)", "Received Item?"]
-
 # rewritten here in order to guarantee ordering
 MC_BOSS_NAMES = ["lucifron", "magmadar", "gehennas", "garr",
                  "shazzrah", "baron geddon", "golemagg the incinerator",
