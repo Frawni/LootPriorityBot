@@ -536,7 +536,7 @@ async def winners(ctx):
     state = GlobalState()
     if state.priority_table != {}:
         WINNERS = {}
-        for player_name, request in state.priority_table.keys():
+        for player_name, request in state.priority_table.items():
             if request.received_item:
                 WINNERS[player_name] = state.priority_table[player_name]
         table_list = build_table(WINNERS, sort_by="name")
