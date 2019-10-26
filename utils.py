@@ -142,7 +142,11 @@ async def update_status():
         )
         embed.add_field(
             name="Raid Time",
-            value=f"{state.when}",
+            value=f"{state.when}"
+        )
+        embed.add_field(
+            name="Bot Boot Time",
+            value=f"{state.boot_time}",
             inline=False
         )
         embed.add_field(

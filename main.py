@@ -226,7 +226,7 @@ async def help(ctx):
     change = True
 
     if state.last_help is not None:
-        delta = datetime.utcnow() - state.last_help
+        delta = datetime.now() - state.last_help
 
         # spam filter of 1 hour
         if delta.days == 0 and delta.seconds < 3600:
@@ -242,7 +242,7 @@ async def help(ctx):
             await ctx.send("Sliding into your DMs to give you some _personal_ help. :kissing_heart:")
 
     if change:
-        state.last_help = datetime.utcnow()
+        state.last_help = datetime.now()
 
     await channel.send(embed=embed_tuple[0])
     await channel.send(embed=embed_tuple[1])
@@ -372,7 +372,7 @@ async def request(ctx, *message):
 
     request = Request(
         role=role, wow_class=wow_class, item=item.name,
-        datetime=datetime.utcnow(), received_item=False
+        datetime=datetime.now(), received_item=False
     )
     state.priority_table[name] = request
     request = request.as_presentable()
