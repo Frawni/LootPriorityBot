@@ -92,6 +92,10 @@ async def on_ready():
 
 @bot.event
 async def on_message(message):
+    # Ignore messages that we sent
+    if message.author.id == bot.user.id:
+        return
+
     state = GlobalState()
     while not state.initialized:
         await asyncio.sleep(1)
