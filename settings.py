@@ -6,7 +6,9 @@ ADMIN_ROLE = "Loot Master"
 INFO_CHANNEL_NAME = "loot-info"
 REQUEST_CHANNEL_NAME = "loot-request"
 DISCUSSION_CHANNEL_NAME = "loot-discussion"
+
 NUM_MESSAGES_FOR_TABLE = 5
+RESERVED_MESSAGE_TEXT = "~Message reserved for loot table~"
 
 AUTHORIZED_CHANNELS = [
     INFO_CHANNEL_NAME,

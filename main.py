@@ -82,10 +82,8 @@ async def on_ready():
             for i in range(NUM_MESSAGES_FOR_TABLE):
                 state.table_messages[i] = await channel.fetch_message(state.table_messages[i])
         except discord.NotFound:
-            logger.exception("Could not find info/status messages by their saved id. Reiniting")
-            state.status_message = await channel.send("Booting - Status Message")
-            for i in range(NUM_MESSAGES_FOR_TABLE):
-                state.table_messages[i] = await channel.send("~Reserved for loot table~")
+            logger.warning("Could not find info/status messages by their saved id. Reiniting")
+            await init_update_messages(channel)
 
     await update_status()
     await update_table()
@@ -202,7 +200,7 @@ async def on_command_error(context, exception):
         await context.channel.send("You do not have the permissions to use that command. Newb.")
     else:
         logger.error(
-            f"Exception in command {context.command}:",
+            f"Exception in command |{context.command}|. On message |{context.message.content}|. From user |{context.message.author.display_name}|",
             exc_info=(type(exception), exception, exception.__traceback__)
         )
 
@@ -251,17 +249,14 @@ async def help(ctx):
     await channel.send(embed=embed_tuple[1])
 
 
-@bot.command()
+@bot.command(rest_is_raw=True)
 @save_state
-async def request(ctx, *message):
+async def request(ctx, *, request):
     if ctx.channel.name != REQUEST_CHANNEL_NAME:
         await ctx.send(f"Requests can only be done in the `{REQUEST_CHANNEL_NAME}` channel. Now begone.")
         return
 
     state = GlobalState()
-    # parse message for <name>/<class>/<item>
-    # (one word for name and class right now)
-    # and add/replace (if same name) to table
     if state.created is None:
         await ctx.send(f"There is no raid currently being tracked. Complain to an {ADMIN_ROLE} until something happens.")
         return
@@ -277,8 +272,14 @@ async def request(ctx, *message):
         await user.create_dm()
         user_dm = user.dm_channel
 
-    request = " ".join(list(message))
     if request.count("/") != 3:
+        logger.warning(
+            (
+                f"Failed loot request from |{user_message.author.display_name}|. "
+                f"Messaged: |{user_message.content}|. "
+                "Reason: / count"
+            )
+        )
         await user_dm.send(
             (
                 f"You sent: `{user_message.content}`\n\n"
@@ -291,6 +292,13 @@ async def request(ctx, *message):
 
     name, role, wow_class, item = [info.strip().casefold() for info in request.split("/")]
     if min(len(role), len(wow_class), len(item), len(name)) < 3:
+        logger.warning(
+            (
+                f"Failed loot request from |{user_message.author.display_name}|. "
+                f"Messaged: |{user_message.content}|. "
+                "Reason: len check"
+            )
+        )
         await user_dm.send(
             (
                 f"You sent: `{user_message.content}`\n\n"
@@ -306,6 +314,13 @@ async def request(ctx, *message):
             role = existing_role
             break
     else:
+        logger.warning(
+            (
+                f"Failed loot request from |{user_message.author.display_name}|. "
+                f"Messaged: |{user_message.content}|. "
+                "Reason: role check"
+            )
+        )
         await user_dm.send(
             (
                 f"You sent: `{user_message.content}`\n\n"
@@ -323,6 +338,13 @@ async def request(ctx, *message):
             wow_class = existing_class
             break
     else:
+        logger.warning(
+            (
+                f"Failed loot request from |{user_message.author.display_name}|. "
+                f"Messaged: |{user_message.content}|. "
+                "Reason: class check"
+            )
+        )
         await user_dm.send(
             (
                 f"You sent: `{user_message.content}`\n\n"
@@ -338,7 +360,14 @@ async def request(ctx, *message):
     try:
         search = OpenSearch('item', item)
     except OpenSearchError as e:
-        logger.info(e)
+        logger.warning(e)
+        logger.warning(
+            (
+                f"Failed loot request from |{user_message.author.display_name}|. "
+                f"Messaged: |{user_message.content}|. "
+                "Reason: item exists check"
+            )
+        )
         await user_dm.send(
             (
                 f"You sent: `{user_message.content}`\n\n"
@@ -363,6 +392,13 @@ async def request(ctx, *message):
         break
 
     if valid_item is None:
+        logger.warning(
+            (
+                f"Failed loot request from |{user_message.author.display_name}|. "
+                f"Messaged: |{user_message.content}|. "
+                "Reason: valid item check"
+            )
+        )
         await user_dm.send(
             (
                 f"You sent: `{user_message.content}`\n\n"
@@ -389,8 +425,15 @@ async def request(ctx, *message):
     try:
         item.get_tooltip_data()
     except SearchObjectError:
+        logger.warning(
+            (
+                f"Failed loot request from |{user_message.author.display_name}|. "
+                f"Messaged: |{user_message.content}|. "
+                "Reason: tooltip broke"
+            )
+        )
         logger.exception("Failed to get tooltip data")
-        await user_dm.send("Well, the tooltip generation fucked up. 'S not my code anyway.")
+        await user_dm.send("Well, the tooltip generation fucked up. There's a limit to how much I can fix someone else's code.")
     else:
         with BytesIO() as image_file:
             item.image.save(image_file, format="png")
@@ -398,8 +441,8 @@ async def request(ctx, *message):
             await user_dm.send(file=discord.File(image_file, filename="reserved.png"))
 
 
-@bot.command()
-async def show(ctx, *message):
+@bot.command(rest_is_raw=True)
+async def show(ctx, *, sort_by):
     state = GlobalState()
     # print table of requests in private message
     if state.priority_table != {}:
@@ -412,9 +455,6 @@ async def show(ctx, *message):
 
         await ctx.send("Sliding into your DMs. :wink:")
 
-        sort_by = ""
-        if message:
-            sort_by = " ".join(message)
         table_list = build_table(state.priority_table, sort_by)
         for table in table_list:
             await dm_channel.send(table)
@@ -427,7 +467,7 @@ async def show(ctx, *message):
 @bot.command()
 @has_role(ADMIN_ROLE)
 @save_state
-async def newraid(ctx, *message):
+async def newraid(ctx):
     # initialize priority table and unlock soft reserves
     # TODO: reinit channel
     state = GlobalState()
@@ -449,7 +489,7 @@ async def newraid(ctx, *message):
         "Date and time should be formatted as: dd/mm/yyyy and hh:mm\n"
         "All times are assumed to be in 24h format and being server time.\n"
         "For example:\n"
-        f"`Molten Core Full Clear {s} Lets clear MC again! {s} 01/02/2069 {s} 19:30`"
+        f"`Molten Core Full Clear {s} Lets clear MC again! {s} 13/02/2069 {s} 19:30`"
     )
     await user_dm.send(msg)
     await ctx.message.delete()
@@ -473,20 +513,19 @@ async def unlock(ctx):
     await ctx.send("Raid priority is open once more!")
 
 
-@bot.command()
+@bot.command(rest_is_raw=True)
 @has_role(ADMIN_ROLE)
-async def boss(ctx, *message):
-    # 1 or majordomo executus
-    input = message
-    if not len(input):
+async def boss(ctx, *, boss_id):
+    # boss_id is either: 1 or majordomo executus
+    if not boss_id:
         await ctx.send("Am I supposed to guess? What boss do you want?")
         return
 
     potential_loot = None
     boss_name = None
-    if input[0].isdigit():
+    if boss_id.isdigit():
         # Boss identified by his number
-        boss_number = int(input[0]) - 1
+        boss_number = int(boss_id) - 1
         if boss_number not in range(len(MC_BOSS_NAMES)):
             await ctx.send("Not a real number. Do I have to spell everything out?")
             return
@@ -494,10 +533,12 @@ async def boss(ctx, *message):
             boss_name = MC_BOSS_NAMES[boss_number]
             potential_loot = MC_BOSS_LOOT[boss_name]
     else:
+        if len(boss_id) < 3:
+            await ctx.send("Wtf kinda name is that?")
+            return
         # Boss identified by name
-        input = " ".join(message)
         for name in MC_BOSS_NAMES:
-            if input.casefold() in name:
+            if boss_id.casefold() in name:
                 boss_name = name
                 potential_loot = MC_BOSS_LOOT[boss_name]
                 break
@@ -521,10 +562,10 @@ async def boss(ctx, *message):
         await ctx.send(table)
 
 
-@bot.command()
+@bot.command(rest_is_raw=True)
 @has_role(ADMIN_ROLE)
 @save_state
-async def itemwin(ctx, character_name):
+async def itemwin(ctx, *, character_name):
     state = GlobalState()
     try:
         state.priority_table[character_name.casefold()].received_item = True

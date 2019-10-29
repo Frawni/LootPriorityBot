@@ -3,7 +3,7 @@ import tabulate as tb
 
 from info import AUTHOR, SOURCE, INVITE
 from globals import GlobalState
-from settings import NUM_MESSAGES_FOR_TABLE, PREFIX
+from settings import NUM_MESSAGES_FOR_TABLE, PREFIX, RESERVED_MESSAGE_TEXT
 
 tb.PRESERVE_WHITESPACE = True
 
@@ -174,11 +174,16 @@ async def update_table():
         table_list = build_update_table()
         for table, message in zip(table_list, state.table_messages):
             await message.edit(content=table)
+
+        for i in range(len(table_list), NUM_MESSAGES_FOR_TABLE):
+            await state.table_messages[i].edit(content=RESERVED_MESSAGE_TEXT)
     else:
         msg = (
                 "Nothing to see here... yet."
         )
         await state.table_messages[0].edit(content=msg)
+        for i in range(1, NUM_MESSAGES_FOR_TABLE):
+            await state.table_messages[i].edit(content=RESERVED_MESSAGE_TEXT)
 
 
 def build_update_table(loot_table=None):
@@ -232,6 +237,6 @@ def build_update_table(loot_table=None):
 async def init_update_messages(channel):
     state = GlobalState()
     state.table_messages = []
+    state.status_message = await channel.send("I'm bootin' baby!")
     for i in range(NUM_MESSAGES_FOR_TABLE):
-        state.table_messages.append(await channel.send("~Message reserved for loot table~"))
-    state.status_message = await channel.send("Status Message - Booting")
+        state.table_messages.append(await channel.send(RESERVED_MESSAGE_TEXT))
