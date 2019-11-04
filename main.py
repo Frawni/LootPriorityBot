@@ -187,6 +187,19 @@ async def process_new_raid(message):
     await user_dm.send(f"Updating banners in the `{INFO_CHANNEL_NAME}` channel.")
     await update_table()
     await update_status()
+    await user_dm.send(f"Announcing new raid in `{REQUEST_CHANNEL_NAME}` channel.")
+
+    logger.info("Looking for request channel for new raid announcement")
+    request_channel = None
+    for channel in bot.get_all_channels():
+        if channel.name == REQUEST_CHANNEL_NAME:
+            request_channel = channel
+            break
+    if request_channel:
+        await user_dm.send("Could not find the request channel so continuing with no announcement.")
+    else:
+        await request_channel.send("New raid is now live!")
+
     await user_dm.send("New raid ready to go!")
 
 
@@ -252,6 +265,7 @@ async def help(ctx):
 @bot.command(rest_is_raw=True)
 @save_state
 async def request(ctx, *, request):
+    request = request.strip()
     if ctx.channel.name != REQUEST_CHANNEL_NAME:
         await ctx.send(f"Requests can only be done in the `{REQUEST_CHANNEL_NAME}` channel. Now begone.")
         return
@@ -443,6 +457,8 @@ async def request(ctx, *, request):
 
 @bot.command(rest_is_raw=True)
 async def show(ctx, *, sort_by):
+    sort_by = sort_by.strip()
+
     state = GlobalState()
     # print table of requests in private message
     if state.priority_table != {}:
@@ -516,6 +532,8 @@ async def unlock(ctx):
 @bot.command(rest_is_raw=True)
 @has_role(ADMIN_ROLE)
 async def boss(ctx, *, boss_id):
+    boss_id = boss_id.strip()
+
     # boss_id is either: 1 or majordomo executus
     if not boss_id:
         await ctx.send("Am I supposed to guess? What boss do you want?")
@@ -566,6 +584,8 @@ async def boss(ctx, *, boss_id):
 @has_role(ADMIN_ROLE)
 @save_state
 async def itemwin(ctx, *, character_name):
+    character_name = character_name.strip()
+
     state = GlobalState()
     try:
         state.priority_table[character_name.casefold()].received_item = True
@@ -596,10 +616,7 @@ if __name__ == "__main__":
         format="%(levelname)s:%(name)s:[%(asctime)s] %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S"
     )
-    # logging.getLogger("discord").setLevel(logging.WARNING)
-    # logging.getLogger("websockets").setLevel(logging.WARNING)
-    # logging.getLogger("urllib3").setLevel(logging.WARNING)
-    # logging.getLogger("PIL").setLevel(logging.WARNING)
+
     logging.info(" ")
     logging.info("-" * 50)
     logging.info(" ")
