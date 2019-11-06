@@ -8,46 +8,6 @@ from settings import NUM_MESSAGES_FOR_TABLE, PREFIX, RESERVED_MESSAGE_TEXT
 tb.PRESERVE_WHITESPACE = True
 
 
-def build_table(priority_table, sort_by=""):
-    HEADERS = [
-        "Name", "Role", "Class", "Item",
-        "Time of Request", "Received?"
-    ]
-    table = []
-    table_list = []
-
-    for key in priority_table.keys():
-        request = priority_table[key].as_presentable()
-        time = request.datetime
-        time_str = "{:02d}:{:02d}:{:02d}".format(time.hour, time.minute, time.second)
-        item_received = "{}".format("Yes" if request.received_item else "No")
-        row = [key.title(), request.role, request.wow_class, request.item] + [time_str, item_received]
-        table.append(row)
-
-    index = HEADERS.index("Item")
-    if sort_by != "":
-        for header in HEADERS:
-            if sort_by.casefold() in header.casefold():
-                index = HEADERS.index(header)
-                break
-        else:
-            table_list.append("I'm not sure how you want me to sort this, so here are the requests by items. :grin:")
-
-    ordered_table = sorted(table, key=lambda x: x[index])
-
-    row_count = len(ordered_table)
-    separator = 12
-    i = 0
-
-    while row_count > separator:
-        table_list.append("```" + tb.tabulate(ordered_table[(separator*i):(separator*(i+1))], headers=HEADERS, tablefmt="fancy_grid") + "```")
-        row_count -= separator
-        i += 1
-    table_list.append("```" + tb.tabulate(ordered_table[(separator*i):], headers=HEADERS, tablefmt="fancy_grid") + "```")
-
-    return table_list
-
-
 def write_info():
     state = GlobalState()
     embed = discord.Embed(title="Loot Priority Bot",
@@ -132,16 +92,7 @@ def write_help_pleb():
 
 async def update_status():
     state = GlobalState()
-    # if state.created:
-    #     msg = (
-    #         "There is currently a raid being tracked!\n"
-    #         f"{len(state.priority_table)} player{'s' if len(state.priority_table) > 1 else ''} have currently reserved loot.\n"
-    #         f"Loot requests are currently: {'LOCKED' if state.lock_flag else 'OPEN'}\n"
-    #     )
-    # else:
-    #     msg = (
-    #         "There is currently NO raid being tracked!\n"
-    #     )
+
     if state.created:
         embed = discord.Embed(
             title=f"{state.name}",
@@ -170,6 +121,7 @@ async def update_status():
 
 async def update_table():
     state = GlobalState()
+
     if state.priority_table:
         table_list = build_update_table()
         for table, message in zip(table_list, state.table_messages):
@@ -186,7 +138,7 @@ async def update_table():
             await state.table_messages[i].edit(content=RESERVED_MESSAGE_TEXT)
 
 
-def build_update_table(loot_table=None):
+def build_update_table(loot_table=None, sort_by=None):
     HEADERS = ["Name", "Role", "Class", "Item"]
 
     if loot_table is None:
@@ -212,7 +164,12 @@ def build_update_table(loot_table=None):
         ]
         table.append(row)
 
-    ordered_table = sorted(table, key=lambda x: (x[3], x[0]))
+    if sort_by is not None and sort_by.title() in HEADERS:
+        sort_column = HEADERS.index(sort_by.title())
+        ordered_table = sorted(table, key=lambda x: (x[sort_column]))
+    else:
+        # By default we sort by (item, name)
+        ordered_table = sorted(table, key=lambda x: (x[3], x[0]))
 
     row_count = len(ordered_table)
     rows_per_msg = 10

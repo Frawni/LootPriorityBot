@@ -34,7 +34,7 @@ from io import BytesIO
 from os import path
 
 from utils import (
-    build_table, write_info, write_help, init_update_messages,
+    write_info, write_help, init_update_messages,
     update_status, update_table, build_update_table
 )
 
@@ -471,7 +471,7 @@ async def show(ctx, *, sort_by):
 
         await ctx.send("Sliding into your DMs. :wink:")
 
-        table_list = build_table(state.priority_table, sort_by)
+        table_list = build_update_table(state.priority_table, sort_by)
         for table in table_list:
             await dm_channel.send(table)
 
