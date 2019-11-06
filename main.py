@@ -32,6 +32,7 @@ from discord.ext.commands import Bot, has_role, CommandNotFound, MissingRole
 from datetime import datetime
 from io import BytesIO
 from os import path
+from json import JSONDecodeError
 
 from utils import (
     write_info, write_help, init_update_messages,
@@ -297,8 +298,8 @@ async def request(ctx, *, request):
         await user_dm.send(
             (
                 f"You sent: `{user_message.content}`\n\n"
-                "It looks like you forgot something.:thinking:"
-                f"\nFix your command (and your life) and message me again in the `{REQUEST_CHANNEL_NAME}` channel!\n"
+                "It looks like you forgot something.:thinking:\n"
+                f"Fix your command (and your life) and message me again in the `{REQUEST_CHANNEL_NAME}` channel!\n"
             )
         )
         await user_message.delete()
@@ -340,8 +341,8 @@ async def request(ctx, *, request):
                 f"You sent: `{user_message.content}`\n\n"
                 "Couldn't understand your declared role.\n"
                 "Format is: `>request <name>/<role>/<class>/<item>`\n"
-                f"Your role choices are: {' | '.join(WOW_ROLES)}"
-                f"\nFix your command (and your life) and message me again in the `{REQUEST_CHANNEL_NAME}` channel!"
+                f"Your role choices are: {' | '.join(WOW_ROLES)}\n"
+                f"Fix your command (and your life) and message me again in the `{REQUEST_CHANNEL_NAME}` channel!"
             )
         )
         await user_message.delete()
@@ -364,8 +365,8 @@ async def request(ctx, *, request):
                 f"You sent: `{user_message.content}`\n\n"
                 "Couldn't understand your declared class.\n"
                 "Format is: `>request <name>/<role>/<class>/<item>`\n"
-                f"Your classes choices are: {' | '.join(WOW_CLASSES)}"
-                f"\nFix your command (and your life) and message me again in the `{REQUEST_CHANNEL_NAME}` channel!"
+                f"Your classes choices are: {' | '.join(WOW_CLASSES)}\n"
+                f"Fix your command (and your life) and message me again in the `{REQUEST_CHANNEL_NAME}` channel!"
             )
         )
         await user_message.delete()
@@ -385,8 +386,26 @@ async def request(ctx, *, request):
         await user_dm.send(
             (
                 f"You sent: `{user_message.content}`\n\n"
-                "Could not find any matching items."
-                f"\nFigure your shit out and message me again in the `{REQUEST_CHANNEL_NAME}` channel!"
+                "Could not find any matching items.\n"
+                f"Figure your shit out and message me again in the `{REQUEST_CHANNEL_NAME}` channel!"
+            )
+        )
+        await user_message.delete()
+        return
+    except JSONDecodeError:
+        logger.warning(
+            (
+                f"Failed loot request from |{user_message.author.display_name}|. "
+                f"Messaged: |{user_message.content}|. "
+                "Reason: wowhead is being a dick"
+            )
+        )
+        await user_dm.send(
+            (
+                f"You sent: `{user_message.content}`\n\n"
+                "Could not properly fetch data from wowhead.\n"
+                "Wowhead is probably just feeling like being a dick at the moment - try the request again in a little while.\n"
+                "If problems continue then give Frawni or Malzo a poke!"
             )
         )
         await user_message.delete()
@@ -416,8 +435,8 @@ async def request(ctx, *, request):
         await user_dm.send(
             (
                 f"You sent: `{user_message.content}`\n\n"
-                "Look, I agree, that is an item. You also have _zero_ chance of getting it doing this raid."
-                f"\nFigure your shit out and message me again in the `{REQUEST_CHANNEL_NAME}` channel!"
+                "Look, I agree, that is an item. You also have _zero_ chance of getting it doing this raid.\n"
+                f"Figure your shit out and message me again in the `{REQUEST_CHANNEL_NAME}` channel!"
             )
         )
         await user_message.delete()
