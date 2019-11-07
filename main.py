@@ -196,9 +196,9 @@ async def process_new_raid(message):
             request_channel = channel
             break
     if request_channel:
-        await user_dm.send("Could not find the request channel so continuing with no announcement.")
-    else:
         await request_channel.send("New raid is now live!")
+    else:
+        await user_dm.send("Could not find the request channel so continuing with no announcement.")
 
     await user_dm.send("New raid ready to go!")
 
