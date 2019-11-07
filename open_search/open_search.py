@@ -3,7 +3,7 @@ Code was copied from https://github.com/mikeStr8s/ClassicBot but modifications w
     wowhead's search api was changed.
 """
 
-
+import logging
 import json
 import re
 
@@ -12,6 +12,8 @@ from bs4 import BeautifulSoup, NavigableString
 
 from open_search.constants import SEARCH_OBJECT_TYPE, OPEN_SEARCH, TOOLTIP, Q_COLORS, TOOLTIP_ARGS
 from open_search.tooltip import build_tooltip
+
+logger = logging.getLogger(__name__)
 
 
 class OpenSearchError(Exception):
@@ -53,7 +55,12 @@ class OpenSearch:
         resp = requests.get(OPEN_SEARCH.format(self.search_query))
         # Why the heck this is needed I dont know, atleast wowhead returns what can be considered 99% json,
         content = resp.content.decode().replace("items:", '"items":')
-        resp_results = json.loads(content)
+        try:
+            resp_results = json.loads(content)
+        except json.JSONDecodeError:
+            logger.exception(f"Failed to decode wowhead json. Wowhead response was: |{resp.content}| with status code: {resp.status_code}")
+            raise
+
         try:
             for result in resp_results[1]["items"]:
                 result_name = result["name"].lstrip("1234567890")
