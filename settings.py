@@ -24,7 +24,7 @@ NEW_RAID_SPLIT_TOKEN = "|"
 
 # rewritten here in order to guarantee ordering
 MC_BOSS_NAMES = ["lucifron", "magmadar", "gehennas", "garr",
-                 "shazzrah", "baron geddon", "golemagg the incinerator",
+                 "baron geddon", "shazzrah", "golemagg the incinerator",
                  "sulfuron harbringer", "majordomo executus", "ragnaros"]
 
 WOW_CLASSES = [
