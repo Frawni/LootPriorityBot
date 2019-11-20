@@ -650,7 +650,7 @@ if __name__ == "__main__":
             boot_count += 1
             logger.info(f"!!! Running the bot - {boot_count} !!!")
             bot.run(DISCORD_TOKEN)
-            logger.info("Bot returned - rerunning in loop)
+            logger.info("Bot returned - rerunning in loop")
     except RuntimeError:
         logger.exception(f"Exiting messily. Boot count: {boot_count}")
     except Exception:
