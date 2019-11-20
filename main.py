@@ -644,8 +644,10 @@ if __name__ == "__main__":
     GlobalState().boot_time = datetime.now()
 
     try:
+        logger.info("Running the bot")
         bot.run(DISCORD_TOKEN)
+        logger.info("Bot returned - exiting)
     except RuntimeError:
-        logger.info("Exiting messily.")
-    except Exception as e:
-        logger.info(e)
+        logger.exception("Exiting messily.")
+    except Exception:
+        logger.exception("Lets see what hides here!")
