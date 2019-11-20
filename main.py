@@ -644,10 +644,14 @@ if __name__ == "__main__":
     GlobalState().boot_time = datetime.now()
 
     try:
-        logger.info("Running the bot")
-        bot.run(DISCORD_TOKEN)
-        logger.info("Bot returned - exiting)
+        logger.info("Starting the endless loop")
+        boot_count = 0
+        while True:
+            boot_count += 1
+            logger.info(f"!!! Running the bot - {boot_count} !!!")
+            bot.run(DISCORD_TOKEN)
+            logger.info("Bot returned - rerunning in loop)
     except RuntimeError:
-        logger.exception("Exiting messily.")
+        logger.exception(f"Exiting messily. Boot count: {boot_count}")
     except Exception:
-        logger.exception("Lets see what hides here!")
+        logger.exception(f"Lets see what hides here! Boot count: {boot_count}")
