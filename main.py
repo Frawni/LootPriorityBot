@@ -39,11 +39,13 @@ from utils import (
     update_status, update_table, build_update_table
 )
 
-from loot_data import MC_BOSS_LOOT
+from mc_loot_data import MC_BOSS_LOOT
+from bwl_loot_data import BWL_BOSS_LOOT
 from settings import (
     DISCORD_TOKEN, AUTHORIZED_CHANNELS, ADMIN_ROLE, PREFIX, NEW_RAID_SPLIT_TOKEN, NEW_RAID_CANCEL_TRIGGER,
-    INFO_CHANNEL_NAME, REQUEST_CHANNEL_NAME, NUM_MESSAGES_FOR_TABLE,
-    MC_BOSS_NAMES, WOW_ROLES, WOW_CLASSES
+    MC_INFO_CHANNEL_NAME, MC_REQUEST_CHANNEL_NAME,
+    BWL_INFO_CHANNEL_NAME, BWL_REQUEST_CHANNEL_NAME, NUM_MESSAGES_FOR_TABLE,
+    MC_BOSS_NAMES, BWL_BOSS_NAMES, WOW_ROLES, WOW_CLASSES
 )
 from open_search.open_search import OpenSearch, OpenSearchError, SearchObjectError
 from globals import GlobalState, Request
@@ -62,7 +64,7 @@ async def on_ready():
     logger.info("Looking for info channel")
     info_channel = None
     for channel in bot.get_all_channels():
-        if channel.name == INFO_CHANNEL_NAME:
+        if channel.name == MC_INFO_CHANNEL_NAME:
             info_channel = channel
             break
 
@@ -111,7 +113,7 @@ async def on_message(message):
     # We only care for our 3 channels, rest can be ignored
     elif channel.name in AUTHORIZED_CHANNELS:
         # Only request commands are allowed in the request channel
-        if channel.name == REQUEST_CHANNEL_NAME:
+        if channel.name == MC_REQUEST_CHANNEL_NAME:
             if message.content.startswith(f"{PREFIX}request"):
                 await bot.process_commands(message)
             else:
@@ -122,7 +124,7 @@ async def on_message(message):
                     await user.create_dm()
                     user_dm = user.dm_channel
                 await user_dm.send(
-                    f"Only requests allowed in the `{REQUEST_CHANNEL_NAME}` channel"
+                    f"Only requests allowed in the `{MC_REQUEST_CHANNEL_NAME}` channel"
                 )
         else:
             await bot.process_commands(message)
@@ -179,21 +181,21 @@ async def process_new_raid(message):
     )
     await user_dm.send("Saving new state.")
     state.save_current_state()
-    await user_dm.send(f"Wiping `{INFO_CHANNEL_NAME}` channel.")
+    await user_dm.send(f"Wiping `{MC_INFO_CHANNEL_NAME}` channel.")
     bots_messages = [msg.id for msg in state.table_messages] + [state.status_message.id]
     async for message in state.info_channel.history(limit=None):
         if message.id not in bots_messages:
             await message.delete()
 
-    await user_dm.send(f"Updating banners in the `{INFO_CHANNEL_NAME}` channel.")
+    await user_dm.send(f"Updating banners in the `{MC_INFO_CHANNEL_NAME}` channel.")
     await update_table()
     await update_status()
-    await user_dm.send(f"Announcing new raid in `{REQUEST_CHANNEL_NAME}` channel.")
+    await user_dm.send(f"Announcing new raid in `{MC_REQUEST_CHANNEL_NAME}` channel.")
 
     logger.info("Looking for request channel for new raid announcement")
     request_channel = None
     for channel in bot.get_all_channels():
-        if channel.name == REQUEST_CHANNEL_NAME:
+        if channel.name == MC_REQUEST_CHANNEL_NAME:
             request_channel = channel
             break
     if request_channel:
@@ -267,13 +269,13 @@ async def help(ctx):
 @save_state
 async def request(ctx, *, request):
     request = request.strip()
-    if ctx.channel.name != REQUEST_CHANNEL_NAME:
-        await ctx.send(f"Requests can only be done in the `{REQUEST_CHANNEL_NAME}` channel. Now begone.")
+    if ctx.channel.name != MC_REQUEST_CHANNEL_NAME:
+        await ctx.send(f"Requests can only be done in the `{MC_REQUEST_CHANNEL_NAME}` or the `{BWL_REQUEST_CHANNEL_NAME}` channel. Now begone.")
         return
 
     state = GlobalState()
     if state.created is None:
-        await ctx.send(f"There is no raid currently being tracked. Complain to an {ADMIN_ROLE} until something happens.")
+        await ctx.send(f"There is no raid currently being tracked. Complain to a(n) `{ADMIN_ROLE}` until something happens.")
         return
 
     if state.lock_flag:
@@ -299,7 +301,7 @@ async def request(ctx, *, request):
             (
                 f"You sent: `{user_message.content}`\n\n"
                 "It looks like you forgot something.:thinking:\n"
-                f"Fix your command (and your life) and message me again in the `{REQUEST_CHANNEL_NAME}` channel!\n"
+                f"Fix your command (and your life) and message me again in the appropriate request channel!\n"
             )
         )
         await user_message.delete()
@@ -318,7 +320,7 @@ async def request(ctx, *, request):
             (
                 f"You sent: `{user_message.content}`\n\n"
                 "I don't speak whatever this is. Write things out properly - and spell them right ffs.\n"
-                f"Fix your command (and your life) and message me again in the `{REQUEST_CHANNEL_NAME}` channel!"
+                f"Fix your command (and your life) and message me again in the appropriate request channel!"
             )
         )
         await user_message.delete()
@@ -342,7 +344,7 @@ async def request(ctx, *, request):
                 "Couldn't understand your declared role.\n"
                 "Format is: `>request <name>/<role>/<class>/<item>`\n"
                 f"Your role choices are: {' | '.join(WOW_ROLES)}\n"
-                f"Fix your command (and your life) and message me again in the `{REQUEST_CHANNEL_NAME}` channel!"
+                f"Fix your command (and your life) and message me again in the appropriate request channel!"
             )
         )
         await user_message.delete()
@@ -366,7 +368,7 @@ async def request(ctx, *, request):
                 "Couldn't understand your declared class.\n"
                 "Format is: `>request <name>/<role>/<class>/<item>`\n"
                 f"Your classes choices are: {' | '.join(WOW_CLASSES)}\n"
-                f"Fix your command (and your life) and message me again in the `{REQUEST_CHANNEL_NAME}` channel!"
+                f"Fix your command (and your life) and message me again in the appropriate request channel!"
             )
         )
         await user_message.delete()
@@ -387,7 +389,7 @@ async def request(ctx, *, request):
             (
                 f"You sent: `{user_message.content}`\n\n"
                 "Could not find any matching items.\n"
-                f"Figure your shit out and message me again in the `{REQUEST_CHANNEL_NAME}` channel!"
+                f"Figure your shit out and message me again in the appropriate request channel!"
             )
         )
         await user_message.delete()
@@ -436,7 +438,7 @@ async def request(ctx, *, request):
             (
                 f"You sent: `{user_message.content}`\n\n"
                 "Look, I agree, that is an item. You also have _zero_ chance of getting it doing this raid.\n"
-                f"Figure your shit out and message me again in the `{REQUEST_CHANNEL_NAME}` channel!"
+                f"Figure your shit out and message me again in the appropriate request channel!"
             )
         )
         await user_message.delete()
@@ -613,18 +615,19 @@ async def itemwin(ctx, *, character_name):
         await ctx.send("I don't know this person. :frowning:")
 
 
-@bot.command()
-@has_role(ADMIN_ROLE)
-async def winners(ctx):
-    state = GlobalState()
-    if state.priority_table != {}:
-        WINNERS = {}
-        for player_name, request in state.priority_table.items():
-            if request.received_item:
-                WINNERS[player_name] = state.priority_table[player_name]
-        table_list = build_update_table(WINNERS)
-        for table in table_list:
-            await ctx.send(table)
+# keeps track of who received what loot - unsure if it actually works currently
+# @bot.command()
+# @has_role(ADMIN_ROLE)
+# async def winners(ctx):
+#     state = GlobalState()
+#     if state.priority_table != {}:
+#         WINNERS = {}
+#         for player_name, request in state.priority_table.items():
+#             if request.received_item:
+#                 WINNERS[player_name] = state.priority_table[player_name]
+#         table_list = build_update_table(WINNERS)
+#         for table in table_list:
+#             await ctx.send(table)
 
 
 if __name__ == "__main__":

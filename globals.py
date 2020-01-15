@@ -6,13 +6,18 @@ from dataclasses import dataclass, field, asdict, fields
 from datetime import datetime
 from os import path
 
-from settings import SAVE_FILENAME, PREVIOUS_SAVE_FILENAME
+from settings import (
+            MC_SAVE_FILENAME, MC_PREVIOUS_SAVE_FILENAME,
+            BWL_SAVE_FILENAME, BWL_PREVIOUS_SAVE_FILENAME
+)
 
 logger = logging.getLogger(__name__)
 
 
-ABSOLUTE_CURRENT_SAVE_FP = path.join(path.dirname(path.abspath(__file__)), SAVE_FILENAME)
-ABSOLUTE_PREVIOUS_SAVE_FP = path.join(path.dirname(path.abspath(__file__)), PREVIOUS_SAVE_FILENAME)
+MC_ABSOLUTE_CURRENT_SAVE_FP = path.join(path.dirname(path.abspath(__file__)), MC_SAVE_FILENAME)
+MC_ABSOLUTE_PREVIOUS_SAVE_FP = path.join(path.dirname(path.abspath(__file__)), MC_PREVIOUS_SAVE_FILENAME)
+BWL_ABSOLUTE_CURRENT_SAVE_FP = path.join(path.dirname(path.abspath(__file__)), BWL_SAVE_FILENAME)
+BWL_ABSOLUTE_PREVIOUS_SAVE_FP = path.join(path.dirname(path.abspath(__file__)), BWL_PREVIOUS_SAVE_FILENAME)
 
 
 @dataclass
@@ -82,7 +87,7 @@ class GlobalState(metaclass=SingletonMetaclass):
 
     def load_current_saved_state(self):
         try:
-            with open(ABSOLUTE_CURRENT_SAVE_FP, "r") as f:
+            with open(MC_ABSOLUTE_CURRENT_SAVE_FP, "r") as f:
                 saved_state = json_load(f)
                 saved_state["priority_table"] = {
                     k: Request(**v)
@@ -93,11 +98,11 @@ class GlobalState(metaclass=SingletonMetaclass):
             logger.info("No save file found")
 
     def save_current_state(self):
-        with open(ABSOLUTE_CURRENT_SAVE_FP, "w") as f:
+        with open(MC_ABSOLUTE_CURRENT_SAVE_FP, "w") as f:
             json_dump(self, f)
 
     def new_raid(self, name, description, when):
-        with open(ABSOLUTE_PREVIOUS_SAVE_FP, "w") as f:
+        with open(MC_ABSOLUTE_PREVIOUS_SAVE_FP, "w") as f:
             json_dump(self, f)
         self.__init__(
             name=name, description=description, when=when,
